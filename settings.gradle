@@ -1335,6 +1335,13 @@ if (isAllProjects()) {
 // for each size and test runner is happy when there is nothing to test.
 includeProject(":placeholder-tests")
 
+// RmR (Rafael Melo Reis) Module - Optimized matrix-based AndroidX utilities
+includeProject(":rmr:rmr-core", [BuildType.MAIN])
+includeProject(":rmr:rmr-lifecycle", [BuildType.MAIN, BuildType.FLAN])
+includeProject(":rmr:rmr-navigation", [BuildType.MAIN, BuildType.FLAN])
+includeProject(":rmr:rmr-preference", [BuildType.MAIN])
+includeProject(":rmr:rmr-room", [BuildType.MAIN])
+
 // Add includedBuild for b/203825166
 includeBuild("placeholder")
 
