@@ -152,10 +152,10 @@ public final class RmRHardware {
         } else if (arch.contains("x86_64") || arch.contains("amd64")) {
             sArchitecture = Architecture.X86_64;
             // Modern x86_64 typically has at least SSE2, often AVX
-            sSimdCapability = detectX86SimdCapability();
+            sSimdCapability = SimdCapability.SSE2; // Conservative baseline
         } else if (arch.contains("x86") || arch.contains("i386") || arch.contains("i686")) {
             sArchitecture = Architecture.X86;
-            sSimdCapability = detectX86SimdCapability();
+            sSimdCapability = SimdCapability.NONE; // x86 32-bit, no guaranteed SIMD
         } else {
             sArchitecture = Architecture.UNKNOWN;
             sSimdCapability = SimdCapability.NONE;
@@ -166,27 +166,6 @@ public final class RmRHardware {
         
         // Check if native library is available (would be loaded separately)
         sNativeAvailable = false; // Will be set to true if native library loads
-    }
-    
-    /**
-     * Detects x86/x86_64 SIMD capabilities.
-     * 
-     * <p>This is a conservative detection that assumes SSE2 as a baseline for x86_64
-     * platforms. More accurate detection of advanced features like AVX would require
-     * native code to execute CPUID instructions, which is not possible from pure Java.</p>
-     * 
-     * <p>The native implementation (when loaded) can utilize whatever SIMD instructions
-     * are compiled in (SSE2, AVX, AVX2) regardless of what this method reports.</p>
-     * 
-     * @return detected SIMD capability (conservative estimate)
-     */
-    private static SimdCapability detectX86SimdCapability() {
-        // On Android x86, we can assume at least SSE2 for x86_64
-        // More advanced detection would require CPUID, which needs native code
-        if (sArchitecture == Architecture.X86_64) {
-            return SimdCapability.SSE2; // Conservative baseline
-        }
-        return SimdCapability.NONE;
     }
     
     /**
