@@ -22,6 +22,42 @@ plugins {
 
 android {
     namespace "androidx.rmr.core"
+    
+    // Enable native code compilation
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.18.1"
+        }
+    }
+    
+    defaultConfig {
+        // Build for all major architectures
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+        }
+        
+        externalNativeBuild {
+            cmake {
+                // Enable SIMD optimizations
+                cppFlags "-std=c++17 -O3 -ffast-math -funroll-loops"
+                
+                // Architecture-specific flags are in CMakeLists.txt
+                arguments "-DANDROID_STL=c++_shared"
+            }
+        }
+    }
+    
+    buildTypes {
+        release {
+            // Enable additional optimizations for release builds
+            externalNativeBuild {
+                cmake {
+                    cppFlags "-std=c++17 -O3 -ffast-math -funroll-loops -flto"
+                }
+            }
+        }
+    }
 }
 
 dependencies {

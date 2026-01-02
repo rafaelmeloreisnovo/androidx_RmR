@@ -113,6 +113,7 @@ public final class RmRMatrix {
     
     /**
      * Matrix multiplication - core operation for state transformations
+     * Uses hardware-optimized implementation from RmRMatrixOps.
      * 
      * @param other matrix to multiply with
      * @return result matrix
@@ -125,15 +126,8 @@ public final class RmRMatrix {
         
         RmRMatrix result = new RmRMatrix(this.rows, other.cols);
         
-        // Optimized multiplication with cache-friendly access pattern
-        for (int i = 0; i < this.rows; i++) {
-            for (int k = 0; k < this.cols; k++) {
-                double aik = this.get(i, k);
-                for (int j = 0; j < other.cols; j++) {
-                    result.data[i * result.cols + j] += aik * other.get(k, j);
-                }
-            }
-        }
+        // Use hardware-optimized multiplication
+        RmRMatrixOps.multiply(this, other, result);
         
         return result;
     }
@@ -160,17 +154,17 @@ public final class RmRMatrix {
     
     /**
      * Transpose - for state transformations
+     * Uses hardware-optimized implementation from RmRMatrixOps.
      * 
      * @return transposed matrix
      */
     @NonNull
     public RmRMatrix transpose() {
         RmRMatrix result = new RmRMatrix(this.cols, this.rows);
-        for (int i = 0; i < this.rows; i++) {
-            for (int j = 0; j < this.cols; j++) {
-                result.set(j, i, this.get(i, j));
-            }
-        }
+        
+        // Use hardware-optimized transpose
+        RmRMatrixOps.transpose(this, result);
+        
         return result;
     }
     
