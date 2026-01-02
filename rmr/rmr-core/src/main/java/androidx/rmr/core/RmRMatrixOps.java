@@ -126,19 +126,8 @@ public final class RmRMatrixOps {
                 int resultOffset = i * n;
                 int bOffset = kk * n;
                 
-                // Manual loop unrolling for common cases
-                int j = 0;
-                int vectorWidth = RmRHardware.getVectorWidth();
-                
-                // Process in vector-width chunks
-                for (; j + vectorWidth <= n; j += vectorWidth) {
-                    for (int v = 0; v < vectorWidth; v++) {
-                        result.data[resultOffset + j + v] += aik * b.data[bOffset + j + v];
-                    }
-                }
-                
-                // Handle remainder
-                for (; j < n; j++) {
+                // Process elements sequentially
+                for (int j = 0; j < n; j++) {
                     result.data[resultOffset + j] += aik * b.data[bOffset + j];
                 }
             }
@@ -279,18 +268,7 @@ public final class RmRMatrixOps {
         }
         
         double sum = 0.0;
-        int i = 0;
-        int vectorWidth = RmRHardware.getVectorWidth();
-        
-        // Process in vector-width chunks for better SIMD utilization
-        for (; i + vectorWidth <= a.length; i += vectorWidth) {
-            for (int v = 0; v < vectorWidth; v++) {
-                sum += a[i + v] * b[i + v];
-            }
-        }
-        
-        // Handle remainder
-        for (; i < a.length; i++) {
+        for (int i = 0; i < a.length; i++) {
             sum += a[i] * b[i];
         }
         
@@ -309,18 +287,7 @@ public final class RmRMatrixOps {
             throw new IllegalArgumentException("All vectors must have same length");
         }
         
-        int i = 0;
-        int vectorWidth = RmRHardware.getVectorWidth();
-        
-        // Process in vector-width chunks
-        for (; i + vectorWidth <= a.length; i += vectorWidth) {
-            for (int v = 0; v < vectorWidth; v++) {
-                result[i + v] = a[i + v] + b[i + v];
-            }
-        }
-        
-        // Handle remainder
-        for (; i < a.length; i++) {
+        for (int i = 0; i < a.length; i++) {
             result[i] = a[i] + b[i];
         }
     }
@@ -337,33 +304,32 @@ public final class RmRMatrixOps {
             throw new IllegalArgumentException("Vector and result must have same length");
         }
         
-        int i = 0;
-        int vectorWidth = RmRHardware.getVectorWidth();
-        
-        // Process in vector-width chunks
-        for (; i + vectorWidth <= vector.length; i += vectorWidth) {
-            for (int v = 0; v < vectorWidth; v++) {
-                result[i + v] = vector[i + v] * scalar;
-            }
-        }
-        
-        // Handle remainder
-        for (; i < vector.length; i++) {
+        for (int i = 0; i < vector.length; i++) {
             result[i] = vector[i] * scalar;
         }
     }
     
     /**
-     * Native matrix multiplication (JNI).
-     * Called only if native library is loaded.
+     * Native matrix multiplication using JNI.
      * 
-     * @param aData first matrix data
+     * <p>This method is called only when native library is loaded and available.
+     * It provides hardware-accelerated matrix multiplication using SIMD instructions
+     * (ARM NEON or x86 SSE/AVX depending on platform).</p>
+     * 
+     * <p><b>Preconditions:</b></p>
+     * <ul>
+     *   <li>Native library must be loaded ({@link RmRHardware#hasNativeSupport()})</li>
+     *   <li>Array dimensions must match: aRows x aCols * aCols x bCols = aRows x bCols</li>
+     *   <li>Arrays must be non-null and properly sized</li>
+     * </ul>
+     * 
+     * @param aData first matrix data in row-major order
      * @param aRows first matrix rows
-     * @param aCols first matrix columns
-     * @param bData second matrix data
-     * @param bRows second matrix rows
+     * @param aCols first matrix columns (must equal bRows)
+     * @param bData second matrix data in row-major order
+     * @param bRows second matrix rows (must equal aCols)
      * @param bCols second matrix columns
-     * @param resultData output matrix data
+     * @param resultData output matrix data in row-major order (aRows x bCols)
      */
     private static native void multiplyNative(double[] aData, int aRows, int aCols,
                                              double[] bData, int bRows, int bCols,

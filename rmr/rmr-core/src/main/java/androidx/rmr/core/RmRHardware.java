@@ -170,9 +170,15 @@ public final class RmRHardware {
     
     /**
      * Detects x86/x86_64 SIMD capabilities.
-     * Conservative detection - assumes SSE2 as baseline for x86_64.
      * 
-     * @return detected SIMD capability
+     * <p>This is a conservative detection that assumes SSE2 as a baseline for x86_64
+     * platforms. More accurate detection of advanced features like AVX would require
+     * native code to execute CPUID instructions, which is not possible from pure Java.</p>
+     * 
+     * <p>The native implementation (when loaded) can utilize whatever SIMD instructions
+     * are compiled in (SSE2, AVX, AVX2) regardless of what this method reports.</p>
+     * 
+     * @return detected SIMD capability (conservative estimate)
      */
     private static SimdCapability detectX86SimdCapability() {
         // On Android x86, we can assume at least SSE2 for x86_64

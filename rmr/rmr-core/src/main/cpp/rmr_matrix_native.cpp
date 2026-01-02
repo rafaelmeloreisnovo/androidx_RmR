@@ -81,7 +81,7 @@ static void multiplyNEON(const double* __restrict__ aData, int aRows, int aCols,
                 for (int i = ii; i < iEnd; i++) {
                     for (int kIdx = kk; kIdx < kEnd; kIdx++) {
                         // Broadcast a[i][k] to all elements of a NEON vector
-                        float64x2_t aik = vdupq_n_f64(aData[i * k + kIdx]);
+                        float64x2_t aik = vdupq_n_f64(aData[i * aCols + kIdx]);
                         
                         int j = jj;
                         int bOffset = kIdx * n;
@@ -100,7 +100,7 @@ static void multiplyNEON(const double* __restrict__ aData, int aRows, int aCols,
                         
                         // Handle remainder
                         for (; j < jEnd; j++) {
-                            resultData[resultOffset + j] += aData[i * k + kIdx] * bData[bOffset + j];
+                            resultData[resultOffset + j] += aData[i * aCols + kIdx] * bData[bOffset + j];
                         }
                     }
                 }
@@ -139,7 +139,7 @@ static void multiplySSE2(const double* __restrict__ aData, int aRows, int aCols,
                 for (int i = ii; i < iEnd; i++) {
                     for (int kIdx = kk; kIdx < kEnd; kIdx++) {
                         // Broadcast a[i][k] to all elements of an SSE vector
-                        __m128d aik = _mm_set1_pd(aData[i * k + kIdx]);
+                        __m128d aik = _mm_set1_pd(aData[i * aCols + kIdx]);
                         
                         int j = jj;
                         int bOffset = kIdx * n;
@@ -158,7 +158,7 @@ static void multiplySSE2(const double* __restrict__ aData, int aRows, int aCols,
                         
                         // Handle remainder
                         for (; j < jEnd; j++) {
-                            resultData[resultOffset + j] += aData[i * k + kIdx] * bData[bOffset + j];
+                            resultData[resultOffset + j] += aData[i * aCols + kIdx] * bData[bOffset + j];
                         }
                     }
                 }
@@ -197,7 +197,7 @@ static void multiplyAVX(const double* __restrict__ aData, int aRows, int aCols,
                 for (int i = ii; i < iEnd; i++) {
                     for (int kIdx = kk; kIdx < kEnd; kIdx++) {
                         // Broadcast a[i][k] to all elements of an AVX vector
-                        __m256d aik = _mm256_set1_pd(aData[i * k + kIdx]);
+                        __m256d aik = _mm256_set1_pd(aData[i * aCols + kIdx]);
                         
                         int j = jj;
                         int bOffset = kIdx * n;
@@ -216,7 +216,7 @@ static void multiplyAVX(const double* __restrict__ aData, int aRows, int aCols,
                         
                         // Handle remainder
                         for (; j < jEnd; j++) {
-                            resultData[resultOffset + j] += aData[i * k + kIdx] * bData[bOffset + j];
+                            resultData[resultOffset + j] += aData[i * aCols + kIdx] * bData[bOffset + j];
                         }
                     }
                 }
@@ -253,7 +253,7 @@ static void multiplyScalar(const double* __restrict__ aData, int aRows, int aCol
                 // Process block
                 for (int i = ii; i < iEnd; i++) {
                     for (int kIdx = kk; kIdx < kEnd; kIdx++) {
-                        double aik = aData[i * k + kIdx];
+                        double aik = aData[i * aCols + kIdx];
                         int bOffset = kIdx * n;
                         int resultOffset = i * n;
                         
