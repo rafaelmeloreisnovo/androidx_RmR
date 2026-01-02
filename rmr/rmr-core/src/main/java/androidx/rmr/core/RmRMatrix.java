@@ -223,9 +223,11 @@ public final class RmRMatrix {
     @NonNull
     public RmRMatrix linearFlip() {
         RmRMatrix result = new RmRMatrix(this.rows, this.cols);
+        // Use tolerance threshold to avoid overflow with very small values
+        final double epsilon = 1e-15;
         for (int i = 0; i < data.length; i++) {
-            // Flip: negate and invert (if non-zero)
-            if (data[i] != 0.0) {
+            // Flip: negate and invert (if non-zero and above threshold)
+            if (Math.abs(data[i]) > epsilon) {
                 result.data[i] = -1.0 / data[i];
             } else {
                 result.data[i] = 0.0;

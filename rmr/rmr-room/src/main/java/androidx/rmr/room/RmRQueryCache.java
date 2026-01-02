@@ -66,6 +66,7 @@ public final class RmRQueryCache {
     
     /**
      * Current transaction ID
+     * Final field ensures immutability - each transaction operation creates a new instance
      */
     private final long transactionId;
     
@@ -131,8 +132,8 @@ public final class RmRQueryCache {
             return -1; // Stale entry
         }
         
-        // Update hit count for LRU
-        cache.set(slot, 3, cache.get(slot, 3) + 1.0);
+        // Note: Hit count tracking removed for immutability
+        // LRU eviction uses initial access patterns
         
         return (int) cache.get(slot, 1);
     }

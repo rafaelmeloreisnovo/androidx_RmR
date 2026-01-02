@@ -26,7 +26,7 @@ android {
 
 dependencies {
     api(project(":rmr:rmr-core"))
-    implementation("androidx.annotation:annotation:1.8.0")
+    implementation(libs.androidx.annotation)
     
     // Test dependencies
     androidTestImplementation(libs.junit)

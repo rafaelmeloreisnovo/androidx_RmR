@@ -290,7 +290,9 @@ public final class RmRPreferenceStore {
         int slot = findOrAllocateSlot(keyHash);
         
         if (slot < 0) {
-            throw new IllegalStateException("Preference store full");
+            throw new IllegalStateException(
+                "Preference store is full (max " + MAX_PREFERENCES + " entries). " +
+                "Remove existing preferences or clear the store before adding new ones.");
         }
         
         RmRMatrix newMapping = mapping.clone();
@@ -351,6 +353,6 @@ public final class RmRPreferenceStore {
             }
         }
         
-        return -1; // Store full
+        return -1; // Store full - caller should handle
     }
 }

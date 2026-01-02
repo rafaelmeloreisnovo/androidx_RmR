@@ -275,8 +275,11 @@ public final class RmRUtils {
      */
     public static double frobeniusNorm(@NonNull RmRMatrix matrix) {
         double sumSquares = 0.0;
-        for (double value : matrix.data) {
-            sumSquares += value * value;
+        for (int i = 0; i < matrix.rows; i++) {
+            for (int j = 0; j < matrix.cols; j++) {
+                double value = matrix.get(i, j);
+                sumSquares += value * value;
+            }
         }
         return Math.sqrt(sumSquares);
     }
