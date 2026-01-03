@@ -261,10 +261,21 @@ Contributions should maintain the core RmR principles:
 
 ### Understanding RmR vs AndroidX
 
-For a comprehensive explanation of the differences between RmR and the original AndroidX implementation, see:
+For a comprehensive explanation of the differences between RmR and the original AndroidX implementation, see our multi-language technical comparisons:
 
+#### Available Languages:
 - **[DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md)** - Complete technical comparison (English)
 - **[DIFERENCAS_DO_ORIGINAL_PT.md](DIFERENCAS_DO_ORIGINAL_PT.md)** - Comparação técnica completa (Português)
+- **[DIFERENCIAS_DEL_ORIGINAL_ES.md](DIFERENCIAS_DEL_ORIGINAL_ES.md)** - Comparación técnica completa (Español)
+- **[DIFFERENCES_ORIGINAL_FR.md](DIFFERENCES_ORIGINAL_FR.md)** - Comparaison technique complète (Français)
+- **[UNTERSCHIEDE_VOM_ORIGINAL_DE.md](UNTERSCHIEDE_VOM_ORIGINAL_DE.md)** - Vollständiger technischer Vergleich (Deutsch)
+
+#### Coming Soon:
+- Italian (Italiano)
+- Russian (Русский)
+- Chinese (中文)
+- Japanese (日本語)
+- Korean (한국어)
 
 These documents provide:
 - Detailed architectural differences
