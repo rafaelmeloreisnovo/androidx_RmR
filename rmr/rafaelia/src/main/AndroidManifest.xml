@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright (C) 2026 Rafael Melo Reis (RmR)
+  
+  Licensed under the Apache License, Version 2.0 with Additional Restrictions.
+  See LEGAL_NOTICE.md for complete terms and automatic penalty provisions.
+  
+  AUTHORIZED USE ONLY
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="androidx.rmr.rafaelia">
+    
+    <!-- Minimum SDK for advanced native features -->
+    <uses-sdk android:minSdkVersion="21" />
+    
+</manifest>
