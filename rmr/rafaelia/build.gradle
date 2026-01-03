@@ -1,0 +1,87 @@
+/*
+ * Copyright (C) 2026 Rafael Melo Reis (RmR)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ * ADDITIONAL USAGE RESTRICTIONS:
+ * This module is strictly for personal use by Rafael Melo Reis.
+ * Unauthorized use, reproduction, or distribution is prohibited and
+ * subject to automatic penalties as defined in the LEGAL_NOTICE file.
+ */
+
+plugins {
+    id("AndroidXPlugin")
+    id("com.android.library")
+    id("kotlin-android")
+}
+
+android {
+    namespace "androidx.rmr.rafaelia"
+    
+    // Enable native code compilation for bare-metal performance
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.18.1"
+        }
+    }
+    
+    defaultConfig {
+        // Build for all major architectures with maximum optimization
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+        }
+        
+        externalNativeBuild {
+            cmake {
+                // Maximum bare-metal optimization flags
+                cppFlags "-std=c++20 -O3 -ffast-math -funroll-loops -march=native -mtune=native -fno-rtti -fno-exceptions"
+                
+                arguments "-DANDROID_STL=c++_shared",
+                          "-DANDROID_TOOLCHAIN=clang",
+                          "-DANDROID_PLATFORM=android-21"
+            }
+        }
+        
+        // Add build config field for usage validation
+        buildConfigField "String", "AUTHORIZED_USER", "\"Rafael Melo Reis\""
+        buildConfigField "boolean", "ENFORCE_RESTRICTIONS", "true"
+    }
+    
+    buildTypes {
+        release {
+            // Maximum optimization for release builds
+            externalNativeBuild {
+                cmake {
+                    cppFlags "-std=c++20 -O3 -ffast-math -funroll-loops -march=native -mtune=native -flto -fno-rtti -fno-exceptions"
+                }
+            }
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    // Zero external dependencies - completely self-contained
+    implementation(libs.androidx.annotation)
+    
+    // Test dependencies only
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.testRunner)
+}
+
+androidx {
+    name = "AndroidX RmR Rafaelia"
+    inceptionYear = "2026"
+    description = "Ultra low-level bare-metal optimization module with strict usage restrictions for personal use"
+}
