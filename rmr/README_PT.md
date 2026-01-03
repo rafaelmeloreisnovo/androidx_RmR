@@ -233,6 +233,31 @@ Contribuições devem manter os princípios fundamentais do RmR:
 4. Computação determinística
 5. Dependências mínimas
 
+## Documentação Completa
+
+### Entendendo RmR vs AndroidX
+
+Para uma explicação abrangente das diferenças entre RmR e a implementação original do AndroidX, consulte:
+
+- **[DIFERENCAS_DO_ORIGINAL_PT.md](DIFERENCAS_DO_ORIGINAL_PT.md)** - Comparação técnica completa (Português)
+- **[DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md)** - Complete technical comparison (English)
+
+Estes documentos fornecem:
+- Diferenças arquiteturais detalhadas
+- Comparações componente por componente
+- Benchmarks de performance
+- Exemplos de código
+- Guias de migração
+- Recomendações de casos de uso
+
+### Documentação Adicional
+
+- **[RESUMO_FINAL.md](RESUMO_FINAL.md)** - Resumo final da implementação
+- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Resumo de implementação (English)
+- **[IMPLEMENTATION_SUMMARY_FINAL.md](IMPLEMENTATION_SUMMARY_FINAL.md)** - Resumo final de implementação (English)
+- **[SEMANTIC_ARCHITECTURE.md](SEMANTIC_ARCHITECTURE.md)** - Framework de arquitetura semântica
+- **[REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)** - Resumo de refatoração e conformidade legal
+
 ## O Que Foi Observado e Corrigido
 
 Este módulo RmR aborda os seguintes aspectos solicitados:

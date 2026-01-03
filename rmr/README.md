@@ -257,6 +257,31 @@ Contributions should maintain the core RmR principles:
 4. Deterministic computation
 5. Minimal dependencies
 
+## Documentation
+
+### Understanding RmR vs AndroidX
+
+For a comprehensive explanation of the differences between RmR and the original AndroidX implementation, see:
+
+- **[DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md)** - Complete technical comparison (English)
+- **[DIFERENCAS_DO_ORIGINAL_PT.md](DIFERENCAS_DO_ORIGINAL_PT.md)** - Comparação técnica completa (Português)
+
+These documents provide:
+- Detailed architectural differences
+- Component-by-component comparisons
+- Performance benchmarks
+- Code examples
+- Migration guides
+- Use case recommendations
+
+### Additional Documentation
+
+- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Implementation overview
+- **[IMPLEMENTATION_SUMMARY_FINAL.md](IMPLEMENTATION_SUMMARY_FINAL.md)** - Final implementation summary
+- **[RESUMO_FINAL.md](RESUMO_FINAL.md)** - Resumo final (Português)
+- **[SEMANTIC_ARCHITECTURE.md](SEMANTIC_ARCHITECTURE.md)** - Semantic architecture framework
+- **[REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)** - Refactoring and legal compliance
+
 ## References
 
 - AndroidX Core: https://developer.android.com/jetpack/androidx/releases/core
