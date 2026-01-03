@@ -12,6 +12,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * 
+ * LEGAL COMPLIANCE NOTICE:
+ * This implementation follows Apache License 2.0 requirements.
+ * For bare-metal optimized version with additional restrictions,
+ * see the rafaelia module (rafaelia/LEGAL_NOTICE.md).
  */
 
 package androidx.rmr.core;
@@ -29,6 +34,10 @@ import androidx.annotation.RestrictTo;
  * 
  * <p>Variables are matrices that assume deterministic points to facilitate calculations,
  * following a linear flip solution with solubility patterns.</p>
+ * 
+ * <p><b>Low-Level Optimization:</b> This class uses direct array access and avoids
+ * object allocations in hot paths. For even lower-level native SIMD operations,
+ * use the rafaelia module.</p>
  * 
  * @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
  */

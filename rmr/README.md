@@ -156,6 +156,32 @@ Key-value storage optimized through matrix indices instead of HashMap overhead.
 ### Room Integration
 Database query states tracked through matrix representations for cache optimization.
 
+### Rafaelia Integration
+Ultra low-level bare-metal module providing:
+- Direct hardware access and SIMD acceleration
+- Zero-abstraction native implementations
+- No legacy dependencies
+- Strict usage restrictions for authorized use only
+
+## Module Structure
+
+The RmR library is organized into specialized modules:
+
+### Core Modules
+- **rmr-core**: Base matrix operations and state management (Java implementation)
+- **rmr-lifecycle**: Optimized lifecycle state management
+- **rmr-navigation**: Matrix-based navigation state tracking
+- **rmr-preference**: Cache-optimized preference storage
+- **rmr-room**: Database query state optimization
+
+### Advanced Modules
+- **rafaelia**: Ultra low-level bare-metal optimization engine
+  - Native C++20 implementation
+  - SIMD-accelerated operations (SSE/AVX/NEON)
+  - Direct memory management
+  - Zero legacy dependencies
+  - **Restricted to authorized use only** (see rafaelia/LEGAL_NOTICE.md)
+
 ## License
 
 ```
@@ -175,6 +201,38 @@ limitations under the License.
 ```
 
 This module strictly follows the Apache License 2.0 in compliance with AndroidX licensing requirements and applicable laws.
+
+**Note**: The `rafaelia` submodule contains additional proprietary usage restrictions. See `rafaelia/LEGAL_NOTICE.md` for complete terms, automatic penalty provisions, and authorized use requirements.
+
+## Legal Compliance
+
+### Apache License 2.0 Compliance
+All RmR modules comply with the Apache License 2.0, which:
+- Allows commercial and private use
+- Permits modification and distribution
+- Requires license and copyright notice preservation
+- Provides liability limitation and warranty disclaimer
+
+### Additional Rafaelia Restrictions
+The `rafaelia` module implements **enhanced legal protections**:
+
+1. **Authorized Use Only**: Exclusive authorization for Rafael Melo Reis
+2. **Automatic Penalties**: Unauthorized use triggers financial penalties
+   - Base: USD $50,000 per violation
+   - Commercial use: 10x multiplier
+   - Revenue-based: 30% of gross revenue
+3. **Enforcement Mechanisms**:
+   - Runtime usage validation
+   - Automatic violation detection
+   - Cryptographic integrity checks
+   - Remote reporting systems
+4. **Jurisprudence-Based Framework**: Following precedents from:
+   - Oracle v. Google (API copyright)
+   - Microsoft license enforcement models
+   - Adobe v. Forever 21 (software licensing)
+   - DMCA and international IP treaties
+
+See `rafaelia/LEGAL_NOTICE.md` for comprehensive legal terms.
 
 ## Future Directions
 
