@@ -114,13 +114,14 @@ public final class RmRQueryCache {
             slot = evictLRU();
         }
         
+        long newTick = accessTick + 1;
         RmRMatrix newCache = cache.clone();
         newCache.set(slot, 0, (double) queryHash);
         newCache.set(slot, 1, (double) resultCount);
         newCache.set(slot, 2, (double) transactionId);
-        newCache.set(slot, 3, (double) accessTick); // Store current access tick
+        newCache.set(slot, 3, (double) newTick); // Store incremented access tick
         
-        return new RmRQueryCache(state, newCache, transactionId, accessTick);
+        return new RmRQueryCache(state, newCache, transactionId, newTick);
     }
     
     /**
@@ -130,6 +131,7 @@ public final class RmRQueryCache {
      * @return result count, or -1 if not cached
      * @deprecated Use getWithUpdate() to get both result and updated cache with tick tracking
      */
+    @Deprecated
     public int get(int queryHash) {
         int slot = findSlot(queryHash);
         if (slot < 0) {
