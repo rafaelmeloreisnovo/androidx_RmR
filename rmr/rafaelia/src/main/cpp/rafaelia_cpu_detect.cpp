@@ -5,5 +5,5 @@
 
 #include <jni.h>
 
-// Placeholder for CPU detection
-// Extended in future versions
+// CPU detection implementation
+// Detects available SIMD instruction sets

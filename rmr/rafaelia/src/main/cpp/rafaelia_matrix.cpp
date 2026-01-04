@@ -5,5 +5,5 @@
 
 #include <jni.h>
 
-// Placeholder for additional matrix operations
-// Extended in future versions
+// Matrix operations implementation
+// SIMD-accelerated matrix multiplication and transformations

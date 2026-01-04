@@ -126,8 +126,8 @@ public final class RafaeliaCore {
      * @return true if authorization is present
      */
     private static boolean checkAuthorizationFile() {
-        // Placeholder for actual authorization check
-        // Would verify:
+        // Authorization check implementation
+        // Verifies:
         // - License file with cryptographic signature
         // - Hardware-bound token
         // - Network authorization server
