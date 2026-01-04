@@ -75,6 +75,20 @@ long bitrafSeed = computeBitrafSeed(inputVector);
    - Index formula: `data[row * cols + col]`
    - Guarantee: Memory layout NEVER changes
 
+6. **Bounds Checking Invariant**
+   - Unsafe methods (`get`, `set`) perform NO bounds checking for performance
+   - Safe methods (`getChecked`, `setChecked`) ALWAYS validate bounds
+   - Guarantee: Unsafe methods require caller to ensure:
+     * `0 <= row < rows`
+     * `0 <= col < cols`
+     * `row * cols + col` does not overflow Integer.MAX_VALUE
+   - Guarantee: Safe methods throw `IndexOutOfBoundsException` for invalid indices
+
+7. **Overflow Prevention**
+   - Matrix constructor validates `rows * cols` will not overflow
+   - Throws `IllegalArgumentException` if dimensions would cause overflow
+   - Guarantee: All RmRMatrix instances have valid, non-overflowing dimensions
+
 ### State Management
 
 1. **State Immutability**
@@ -138,8 +152,10 @@ long bitrafSeed = computeBitrafSeed(inputVector);
 #### Core Methods (Immutable Signatures)
 ```java
 // RmRMatrix
-public double get(int row, int col)
-public void set(int row, int col, double value)
+public double get(int row, int col)  // UNSAFE: no bounds checking
+public void set(int row, int col, double value)  // UNSAFE: no bounds checking
+public double getChecked(int row, int col)  // SAFE: validates bounds
+public void setChecked(int row, int col, double value)  // SAFE: validates bounds
 public RmRMatrix multiply(RmRMatrix other)
 public RmRMatrix add(RmRMatrix other)
 public RmRMatrix transpose()
