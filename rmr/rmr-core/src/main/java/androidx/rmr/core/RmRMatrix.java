@@ -75,8 +75,16 @@ public final class RmRMatrix {
      * 
      * @param rows number of rows
      * @param cols number of columns
+     * @throws IllegalArgumentException if dimensions would cause integer overflow
      */
     public RmRMatrix(int rows, int cols) {
+        if (rows < 0 || cols < 0) {
+            throw new IllegalArgumentException("Matrix dimensions must be non-negative");
+        }
+        // Check for integer overflow: rows * cols
+        if (rows > 0 && cols > Integer.MAX_VALUE / rows) {
+            throw new IllegalArgumentException("Matrix dimensions too large: rows * cols would overflow");
+        }
         this.rows = rows;
         this.cols = cols;
         this.data = new double[rows * cols];
@@ -101,8 +109,18 @@ public final class RmRMatrix {
     /**
      * Direct element access - no bounds checking for performance
      * 
-     * @param row row index
-     * @param col column index
+     * <p><b>UNSAFE:</b> This method performs no bounds checking for maximum performance.
+     * Only use when you can guarantee that row and col are within valid bounds:
+     * <ul>
+     *   <li>0 <= row < rows</li>
+     *   <li>0 <= col < cols</li>
+     *   <li>row * cols + col < data.length (no integer overflow)</li>
+     * </ul>
+     * 
+     * <p>For bounds-checked access, use {@link #getChecked(int, int)}.
+     * 
+     * @param row row index (unchecked)
+     * @param col column index (unchecked)
      * @return element value
      */
     public double get(int row, int col) {
@@ -110,13 +128,67 @@ public final class RmRMatrix {
     }
     
     /**
+     * Bounds-checked element access - validates indices before access
+     * 
+     * <p>This method validates that row and col are within valid bounds
+     * before accessing the element. Use this method when indices come from
+     * untrusted sources or when safety is prioritized over performance.
+     * 
+     * @param row row index
+     * @param col column index
+     * @return element value
+     * @throws IndexOutOfBoundsException if row or col are out of bounds
+     */
+    public double getChecked(int row, int col) {
+        if (row < 0 || row >= rows) {
+            throw new IndexOutOfBoundsException("Row index " + row + " out of bounds [0, " + rows + ")");
+        }
+        if (col < 0 || col >= cols) {
+            throw new IndexOutOfBoundsException("Column index " + col + " out of bounds [0, " + cols + ")");
+        }
+        return data[row * cols + col];
+    }
+    
+    /**
      * Direct element mutation - no bounds checking for performance
+     * 
+     * <p><b>UNSAFE:</b> This method performs no bounds checking for maximum performance.
+     * Only use when you can guarantee that row and col are within valid bounds:
+     * <ul>
+     *   <li>0 <= row < rows</li>
+     *   <li>0 <= col < cols</li>
+     *   <li>row * cols + col < data.length (no integer overflow)</li>
+     * </ul>
+     * 
+     * <p>For bounds-checked mutation, use {@link #setChecked(int, int, double)}.
+     * 
+     * @param row row index (unchecked)
+     * @param col column index (unchecked)
+     * @param value new value
+     */
+    public void set(int row, int col, double value) {
+        data[row * cols + col] = value;
+    }
+    
+    /**
+     * Bounds-checked element mutation - validates indices before mutation
+     * 
+     * <p>This method validates that row and col are within valid bounds
+     * before setting the element. Use this method when indices come from
+     * untrusted sources or when safety is prioritized over performance.
      * 
      * @param row row index
      * @param col column index
      * @param value new value
+     * @throws IndexOutOfBoundsException if row or col are out of bounds
      */
-    public void set(int row, int col, double value) {
+    public void setChecked(int row, int col, double value) {
+        if (row < 0 || row >= rows) {
+            throw new IndexOutOfBoundsException("Row index " + row + " out of bounds [0, " + rows + ")");
+        }
+        if (col < 0 || col >= cols) {
+            throw new IndexOutOfBoundsException("Column index " + col + " out of bounds [0, " + cols + ")");
+        }
         data[row * cols + col] = value;
     }
     

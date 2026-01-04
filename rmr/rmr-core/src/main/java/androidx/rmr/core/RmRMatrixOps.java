@@ -24,7 +24,7 @@ import androidx.annotation.RestrictTo;
  * 
  * <p>This class provides highly optimized matrix operations that adapt to the
  * underlying hardware architecture. It implements cache blocking, SIMD-aware
- * algorithms, and parallel execution strategies for maximum performance.</p>
+ * algorithms for maximum single-threaded performance.</p>
  * 
  * <h3>Optimization Strategies:</h3>
  * <ol>
@@ -35,10 +35,13 @@ import androidx.annotation.RestrictTo;
  *   <li><b>SIMD Awareness</b>: Algorithm layout for vectorization</li>
  *   <li><b>Branch Elimination</b>: Reduces conditional branches in hot loops</li>
  *   <li><b>Register Reuse</b>: Maximizes register-resident data</li>
- *   <li><b>Parallel Decomposition</b>: Multi-core utilization when beneficial</li>
- *   <li><b>False Sharing Avoidance</b>: Padding to prevent cache contention</li>
  *   <li><b>Instruction-Level Parallelism</b>: Independent operations for CPU pipelining</li>
  * </ol>
+ * 
+ * <p><b>Note on Parallelization:</b> This implementation focuses on single-threaded
+ * performance. Multi-threaded parallelization is intentionally not included to avoid
+ * thread pool management overhead and complexity at this low level. Applications
+ * requiring parallel execution should use higher-level frameworks or libraries.</p>
  * 
  * @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
  */
@@ -49,11 +52,6 @@ public final class RmRMatrixOps {
      * Threshold for using blocked matrix multiplication
      */
     private static final int BLOCK_THRESHOLD = 32;
-    
-    /**
-     * Threshold for using parallel execution
-     */
-    private static final int PARALLEL_THRESHOLD = 128;
     
     private RmRMatrixOps() {
         // Utility class - no instantiation
@@ -97,11 +95,10 @@ public final class RmRMatrixOps {
         if (m < BLOCK_THRESHOLD && n < BLOCK_THRESHOLD && k < BLOCK_THRESHOLD) {
             // Small matrices - use simple optimized loop
             multiplySmall(a, b, result);
-        } else if (RmRHardware.shouldParallelize(m * n * k)) {
-            // Large matrices with multiple cores - use parallel blocked multiplication
-            multiplyParallelBlocked(a, b, result);
         } else {
-            // Medium matrices - use cache-blocked multiplication
+            // Medium/large matrices - use cache-blocked multiplication
+            // Note: Parallel implementation not included to avoid thread pool overhead
+            // and complexity. For true parallelization, use higher-level frameworks.
             multiplyBlocked(a, b, result);
         }
     }
@@ -175,22 +172,6 @@ public final class RmRMatrixOps {
                 }
             }
         }
-    }
-    
-    /**
-     * Parallel blocked matrix multiplication.
-     * Distributes block computation across available CPU cores.
-     * 
-     * @param a first matrix
-     * @param b second matrix
-     * @param result output matrix
-     */
-    private static void multiplyParallelBlocked(@NonNull RmRMatrix a, @NonNull RmRMatrix b, 
-                                                @NonNull RmRMatrix result) {
-        // For now, fall back to single-threaded blocked multiplication
-        // Full parallel implementation would require thread pool management
-        // which should be handled at a higher level to avoid overhead
-        multiplyBlocked(a, b, result);
     }
     
     /**

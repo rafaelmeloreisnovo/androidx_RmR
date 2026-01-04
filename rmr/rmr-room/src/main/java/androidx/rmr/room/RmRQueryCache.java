@@ -39,7 +39,7 @@ import androidx.rmr.core.RmRState;
  *   <li>0: Query hash</li>
  *   <li>1: Result count</li>
  *   <li>2: Transaction ID</li>
- *   <li>3: Cache hit count for LRU</li>
+ *   <li>3: Last access tick (for LRU eviction)</li>
  * </ul>
  * 
  * @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
@@ -71,10 +71,16 @@ public final class RmRQueryCache {
     private final long transactionId;
     
     /**
+     * Access tick counter for LRU eviction
+     * Incremented on each get() to track recency of access
+     */
+    private final long accessTick;
+    
+    /**
      * Creates empty query cache
      */
     public RmRQueryCache() {
-        this(RmRState.forDatabase(), new RmRMatrix(MAX_CACHE_SIZE, 4), 0L);
+        this(RmRState.forDatabase(), new RmRMatrix(MAX_CACHE_SIZE, 4), 0L, 0L);
     }
     
     /**
@@ -83,11 +89,13 @@ public final class RmRQueryCache {
      * @param state RmR state
      * @param cache cache storage matrix
      * @param transactionId current transaction
+     * @param accessTick current access tick
      */
-    private RmRQueryCache(@NonNull RmRState state, @NonNull RmRMatrix cache, long transactionId) {
+    private RmRQueryCache(@NonNull RmRState state, @NonNull RmRMatrix cache, long transactionId, long accessTick) {
         this.state = state;
         this.cache = cache;
         this.transactionId = transactionId;
+        this.accessTick = accessTick;
     }
     
     /**
@@ -106,13 +114,14 @@ public final class RmRQueryCache {
             slot = evictLRU();
         }
         
+        long newTick = accessTick + 1;
         RmRMatrix newCache = cache.clone();
         newCache.set(slot, 0, (double) queryHash);
         newCache.set(slot, 1, (double) resultCount);
         newCache.set(slot, 2, (double) transactionId);
-        newCache.set(slot, 3, 1.0); // Initial hit count
+        newCache.set(slot, 3, (double) newTick); // Store incremented access tick
         
-        return new RmRQueryCache(state, newCache, transactionId);
+        return new RmRQueryCache(state, newCache, transactionId, newTick);
     }
     
     /**
@@ -120,7 +129,9 @@ public final class RmRQueryCache {
      * 
      * @param queryHash hash of SQL query
      * @return result count, or -1 if not cached
+     * @deprecated Use getWithUpdate() to get both result and updated cache with tick tracking
      */
+    @Deprecated
     public int get(int queryHash) {
         int slot = findSlot(queryHash);
         if (slot < 0) {
@@ -132,10 +143,55 @@ public final class RmRQueryCache {
             return -1; // Stale entry
         }
         
-        // Note: Hit count tracking removed for immutability
-        // LRU eviction uses initial access patterns
+        // Note: This method doesn't update access tick for backward compatibility
+        // Use getWithUpdate() for proper LRU tracking
         
         return (int) cache.get(slot, 1);
+    }
+    
+    /**
+     * Gets cached query result and returns updated cache with access tracking
+     * 
+     * @param queryHash hash of SQL query
+     * @return cache result with updated access tick
+     */
+    @NonNull
+    public CacheResult getWithUpdate(int queryHash) {
+        int slot = findSlot(queryHash);
+        if (slot < 0) {
+            return new CacheResult(this, -1); // Cache miss
+        }
+        
+        // Check if cache entry is still valid (same transaction)
+        if ((long) cache.get(slot, 2) != transactionId) {
+            return new CacheResult(this, -1); // Stale entry
+        }
+        
+        // Update access tick for LRU tracking
+        RmRMatrix newCache = cache.clone();
+        long newTick = accessTick + 1;
+        newCache.set(slot, 3, (double) newTick);
+        
+        RmRQueryCache updatedCache = new RmRQueryCache(state, newCache, transactionId, newTick);
+        return new CacheResult(updatedCache, (int) cache.get(slot, 1));
+    }
+    
+    /**
+     * Result of cache lookup with updated cache instance
+     */
+    public static final class CacheResult {
+        @NonNull
+        public final RmRQueryCache cache;
+        public final int resultCount; // -1 if miss
+        
+        CacheResult(@NonNull RmRQueryCache cache, int resultCount) {
+            this.cache = cache;
+            this.resultCount = resultCount;
+        }
+        
+        public boolean isHit() {
+            return resultCount >= 0;
+        }
     }
     
     /**
@@ -145,7 +201,7 @@ public final class RmRQueryCache {
      */
     @NonNull
     public RmRQueryCache invalidate() {
-        return new RmRQueryCache(state, cache, transactionId + 1);
+        return new RmRQueryCache(state, cache, transactionId + 1, accessTick);
     }
     
     /**
@@ -167,7 +223,7 @@ public final class RmRQueryCache {
         newCache.set(slot, 2, 0.0);
         newCache.set(slot, 3, 0.0);
         
-        return new RmRQueryCache(state, newCache, transactionId);
+        return new RmRQueryCache(state, newCache, transactionId, accessTick);
     }
     
     /**
@@ -183,20 +239,20 @@ public final class RmRQueryCache {
     /**
      * Gets cache hit rate
      * 
-     * @return average hits per entry
+     * @return average access recency per entry
      */
     public double getCacheHitRate() {
-        double totalHits = 0.0;
+        double totalTicks = 0.0;
         int activeEntries = 0;
         
         for (int i = 0; i < MAX_CACHE_SIZE; i++) {
             if (cache.get(i, 0) != 0.0) {
-                totalHits += cache.get(i, 3);
+                totalTicks += cache.get(i, 3);
                 activeEntries++;
             }
         }
         
-        return activeEntries > 0 ? totalHits / activeEntries : 0.0;
+        return activeEntries > 0 ? totalTicks / activeEntries : 0.0;
     }
     
     /**
@@ -273,15 +329,16 @@ public final class RmRQueryCache {
     
     /**
      * Internal: evicts least recently used entry
+     * Finds the entry with the smallest lastAccessTick value
      */
     private int evictLRU() {
         int lruSlot = 0;
-        double minHits = Double.MAX_VALUE;
+        double minTick = Double.MAX_VALUE;
         
         for (int i = 0; i < MAX_CACHE_SIZE; i++) {
-            double hits = cache.get(i, 3);
-            if (hits < minHits) {
-                minHits = hits;
+            double tick = cache.get(i, 3);
+            if (tick < minTick) {
+                minTick = tick;
                 lruSlot = i;
             }
         }
@@ -297,6 +354,6 @@ public final class RmRQueryCache {
     @NonNull
     public RmRQueryCache createOptimized() {
         RmRState optimized = state.optimize();
-        return new RmRQueryCache(optimized, cache, transactionId);
+        return new RmRQueryCache(optimized, cache, transactionId, accessTick);
     }
 }
