@@ -32,6 +32,10 @@ public class RmRInvariantTest {
     
     private static final double EPSILON = 1e-10;
     
+    // For operations that accumulate numerical errors (e.g., multiple matrix multiplications)
+    // we use a larger epsilon to account for floating-point precision loss
+    private static final double ACCUMULATED_ERROR_EPSILON = EPSILON * 100;
+    
     @Test
     public void testIdentityInvariant() {
         // I * M = M for any matrix M
@@ -208,9 +212,9 @@ public class RmRInvariantTest {
         double traceBCA = RmRUtils.trace(bca);
         
         assertEquals("Trace cyclic invariant: tr(ABC) = tr(CAB)",
-                   traceABC, traceCAB, EPSILON * 100); // Larger epsilon for accumulated error
+                   traceABC, traceCAB, ACCUMULATED_ERROR_EPSILON);
         assertEquals("Trace cyclic invariant: tr(ABC) = tr(BCA)",
-                   traceABC, traceBCA, EPSILON * 100);
+                   traceABC, traceBCA, ACCUMULATED_ERROR_EPSILON);
     }
     
     @Test

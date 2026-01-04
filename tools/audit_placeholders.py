@@ -55,11 +55,15 @@ def find_placeholders(file_path: Path) -> List[Tuple[int, str, str]]:
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             for line_num, line in enumerate(f, start=1):
-                # Check each pattern
+                # Check each pattern and report all matches
+                found_patterns = []
                 for pattern in PLACEHOLDER_PATTERNS:
                     if re.search(pattern, line, re.IGNORECASE):
-                        findings.append((line_num, pattern, line.strip()))
-                        break  # Only report first match per line
+                        found_patterns.append(pattern)
+                
+                # Report each match separately for clarity
+                for pattern in found_patterns:
+                    findings.append((line_num, pattern, line.strip()))
     except Exception as e:
         print(f"Warning: Could not read {file_path}: {e}", file=sys.stderr)
     

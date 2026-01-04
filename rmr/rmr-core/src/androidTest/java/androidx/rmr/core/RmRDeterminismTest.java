@@ -30,6 +30,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 @RunWith(AndroidJUnit4.class)
 public class RmRDeterminismTest {
     
+    // Determinism tests use stricter epsilon (1e-15) than invariant tests (1e-10)
+    // because determinism requires exact bit-for-bit reproducibility,
+    // while invariants may accumulate small numerical errors across operations
     private static final double EPSILON = 1e-15;
     
     @Test

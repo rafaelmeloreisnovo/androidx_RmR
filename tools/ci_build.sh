@@ -43,7 +43,7 @@ echo "=========================================="
 TELEMETRY_CHECK=$(grep -ri "telemetry\|analytics\|phone.home\|tracking\|usage.stat" \
     rmr/rmr-core/src/main rmr/rafaelia/src/main \
     --include="*.java" --include="*.kt" --include="*.cpp" --include="*.h" \
-    2>/dev/null | grep -v "// " | grep -v "//" || true)
+    2>/dev/null | grep -v "^[[:space:]]*//\|^[[:space:]]*/\*\|^[[:space:]]*\*" || true)
 
 if [ -z "$TELEMETRY_CHECK" ]; then
     echo -e "${GREEN}✓ No telemetry/analytics found in core modules${NC}"

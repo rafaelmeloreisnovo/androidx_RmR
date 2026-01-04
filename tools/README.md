@@ -305,5 +305,5 @@ When adding new tools:
 
 ---
 
-**Last Updated**: 2026-01-04  
-**Maintained by**: RmR Core Team
+**Maintained by**: RmR Core Team  
+**See commit history for last updated date**
