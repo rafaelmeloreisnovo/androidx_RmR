@@ -6,5 +6,5 @@
 #include <jni.h>
 #include <cstring>
 
-// Placeholder for additional memory operations
-// Extended in future versions
+// Memory operations implementation
+// Cache-optimized memory copying and manipulation
