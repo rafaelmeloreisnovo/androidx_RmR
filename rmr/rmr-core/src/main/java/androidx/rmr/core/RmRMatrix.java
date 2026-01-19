@@ -12,312 +12,129 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
- * LEGAL COMPLIANCE NOTICE:
- * This implementation follows Apache License 2.0 requirements.
- * For bare-metal optimized version with additional restrictions,
- * see the rafaelia module (rafaelia/LEGAL_NOTICE.md).
  */
 
 package androidx.rmr.core;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RestrictTo;
 
-/**
- * Matrix-based state representation for minimal footprint and high performance.
- * 
- * <p>RmR (Rafael Melo Reis) Core provides optimized, low-level bare metal computation
- * using matrix operations instead of traditional function calls. This approach minimizes
- * memory footprint and maximizes execution speed by treating all state as deterministic
- * points in a matrix space.
- * 
- * <p>Variables are matrices that assume deterministic points to facilitate calculations,
- * following a linear flip solution with solubility patterns.</p>
- * 
- * <p><b>Low-Level Optimization:</b> This class uses direct array access and avoids
- * object allocations in hot paths. For even lower-level native SIMD operations,
- * use the rafaelia module.</p>
- * 
- * @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
- */
-@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public final class RmRMatrix {
-    
-    /**
-     * Matrix dimensions - fixed size for optimal memory layout
-     */
-    private static final int DEFAULT_ROWS = 4;
-    private static final int DEFAULT_COLS = 4;
-    
-    /**
-     * Raw matrix data - direct access for bare metal performance
-     * Layout: row-major order for cache locality
-     */
-    @NonNull
-    public final double[] data;
-    
-    /**
-     * Matrix dimensions
-     */
-    public final int rows;
-    public final int cols;
-    
-    /**
-     * Creates a matrix with default dimensions (4x4)
-     */
-    public RmRMatrix() {
-        this(DEFAULT_ROWS, DEFAULT_COLS);
-    }
-    
-    /**
-     * Creates a matrix with specified dimensions
-     * 
-     * @param rows number of rows
-     * @param cols number of columns
-     * @throws IllegalArgumentException if dimensions would cause integer overflow
-     */
+    private final int rows;
+    private final int cols;
+    private final double[] data;
+
     public RmRMatrix(int rows, int cols) {
-        if (rows < 0 || cols < 0) {
-            throw new IllegalArgumentException("Matrix dimensions must be non-negative");
+        if (rows <= 0 || cols <= 0) {
+            throw new IllegalArgumentException("Matrix dimensions must be positive.");
         }
-        // Check for integer overflow: rows * cols
-        if (rows > 0 && cols > Integer.MAX_VALUE / rows) {
-            throw new IllegalArgumentException("Matrix dimensions too large: rows * cols would overflow");
+        if ((long) rows * (long) cols > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Matrix size overflows integer bounds.");
         }
         this.rows = rows;
         this.cols = cols;
         this.data = new double[rows * cols];
     }
-    
-    /**
-     * Creates a matrix from existing data
-     * 
-     * @param rows number of rows
-     * @param cols number of columns
-     * @param data raw matrix data in row-major order
-     */
-    public RmRMatrix(int rows, int cols, @NonNull double[] data) {
-        if (data.length != rows * cols) {
-            throw new IllegalArgumentException("Data length must equal rows * cols");
-        }
+
+    private RmRMatrix(int rows, int cols, double[] data) {
         this.rows = rows;
         this.cols = cols;
-        this.data = data.clone();
+        this.data = data;
     }
-    
-    /**
-     * Direct element access - no bounds checking for performance
-     * 
-     * <p><b>UNSAFE:</b> This method performs no bounds checking for maximum performance.
-     * Only use when you can guarantee that row and col are within valid bounds:
-     * <ul>
-     *   <li>0 <= row < rows</li>
-     *   <li>0 <= col < cols</li>
-     *   <li>row * cols + col < data.length (no integer overflow)</li>
-     * </ul>
-     * 
-     * <p>For bounds-checked access, use {@link #getChecked(int, int)}.
-     * 
-     * @param row row index (unchecked)
-     * @param col column index (unchecked)
-     * @return element value
-     */
+
+    public int getRows() {
+        return rows;
+    }
+
+    public int getCols() {
+        return cols;
+    }
+
     public double get(int row, int col) {
         return data[row * cols + col];
     }
-    
-    /**
-     * Bounds-checked element access - validates indices before access
-     * 
-     * <p>This method validates that row and col are within valid bounds
-     * before accessing the element. Use this method when indices come from
-     * untrusted sources or when safety is prioritized over performance.
-     * 
-     * @param row row index
-     * @param col column index
-     * @return element value
-     * @throws IndexOutOfBoundsException if row or col are out of bounds
-     */
-    public double getChecked(int row, int col) {
-        if (row < 0 || row >= rows) {
-            throw new IndexOutOfBoundsException("Row index " + row + " out of bounds [0, " + rows + ")");
-        }
-        if (col < 0 || col >= cols) {
-            throw new IndexOutOfBoundsException("Column index " + col + " out of bounds [0, " + cols + ")");
-        }
-        return data[row * cols + col];
-    }
-    
-    /**
-     * Direct element mutation - no bounds checking for performance
-     * 
-     * <p><b>UNSAFE:</b> This method performs no bounds checking for maximum performance.
-     * Only use when you can guarantee that row and col are within valid bounds:
-     * <ul>
-     *   <li>0 <= row < rows</li>
-     *   <li>0 <= col < cols</li>
-     *   <li>row * cols + col < data.length (no integer overflow)</li>
-     * </ul>
-     * 
-     * <p>For bounds-checked mutation, use {@link #setChecked(int, int, double)}.
-     * 
-     * @param row row index (unchecked)
-     * @param col column index (unchecked)
-     * @param value new value
-     */
+
     public void set(int row, int col, double value) {
         data[row * cols + col] = value;
     }
-    
-    /**
-     * Bounds-checked element mutation - validates indices before mutation
-     * 
-     * <p>This method validates that row and col are within valid bounds
-     * before setting the element. Use this method when indices come from
-     * untrusted sources or when safety is prioritized over performance.
-     * 
-     * @param row row index
-     * @param col column index
-     * @param value new value
-     * @throws IndexOutOfBoundsException if row or col are out of bounds
-     */
+
+    public double getChecked(int row, int col) {
+        validateBounds(row, col);
+        return data[row * cols + col];
+    }
+
     public void setChecked(int row, int col, double value) {
-        if (row < 0 || row >= rows) {
-            throw new IndexOutOfBoundsException("Row index " + row + " out of bounds [0, " + rows + ")");
-        }
-        if (col < 0 || col >= cols) {
-            throw new IndexOutOfBoundsException("Column index " + col + " out of bounds [0, " + cols + ")");
-        }
+        validateBounds(row, col);
         data[row * cols + col] = value;
     }
-    
-    /**
-     * Matrix multiplication - core operation for state transformations
-     * Uses hardware-optimized implementation from RmRMatrixOps.
-     * 
-     * @param other matrix to multiply with
-     * @return result matrix
-     */
-    @NonNull
-    public RmRMatrix multiply(@NonNull RmRMatrix other) {
-        if (this.cols != other.rows) {
-            throw new IllegalArgumentException("Matrix dimensions incompatible for multiplication");
-        }
-        
-        RmRMatrix result = new RmRMatrix(this.rows, other.cols);
-        
-        // Use hardware-optimized multiplication
-        RmRMatrixOps.multiply(this, other, result);
-        
-        return result;
-    }
-    
-    /**
-     * Element-wise addition - for state accumulation
-     * 
-     * @param other matrix to add
-     * @return result matrix
-     */
+
     @NonNull
     public RmRMatrix add(@NonNull RmRMatrix other) {
-        if (this.rows != other.rows || this.cols != other.cols) {
-            throw new IllegalArgumentException("Matrix dimensions must match for addition");
-        }
-        
-        RmRMatrix result = new RmRMatrix(this.rows, this.cols);
+        ensureSameSize(other);
+        double[] result = new double[data.length];
         for (int i = 0; i < data.length; i++) {
-            result.data[i] = this.data[i] + other.data[i];
+            result[i] = data[i] + other.data[i];
         }
-        
-        return result;
+        return new RmRMatrix(rows, cols, result);
     }
-    
-    /**
-     * Transpose - for state transformations
-     * Uses hardware-optimized implementation from RmRMatrixOps.
-     * 
-     * @return transposed matrix
-     */
+
     @NonNull
-    public RmRMatrix transpose() {
-        RmRMatrix result = new RmRMatrix(this.cols, this.rows);
-        
-        // Use hardware-optimized transpose
-        RmRMatrixOps.transpose(this, result);
-        
-        return result;
-    }
-    
-    /**
-     * Creates identity matrix - for initialization
-     * 
-     * @param size dimension of square matrix
-     * @return identity matrix
-     */
-    @NonNull
-    public static RmRMatrix identity(int size) {
-        RmRMatrix result = new RmRMatrix(size, size);
-        for (int i = 0; i < size; i++) {
-            result.set(i, i, 1.0);
+    public RmRMatrix multiply(@NonNull RmRMatrix other) {
+        if (cols != other.rows) {
+            throw new IllegalArgumentException("Incompatible matrix dimensions.");
         }
-        return result;
-    }
-    
-    /**
-     * Deterministic point calculation - core RmR concept
-     * Maps state variables to deterministic points in matrix space
-     * 
-     * @param stateVector input state vector
-     * @return deterministic point coordinates
-     */
-    @NonNull
-    public double[] calculateDeterministicPoint(@NonNull double[] stateVector) {
-        if (stateVector.length != this.cols) {
-            throw new IllegalArgumentException("State vector length must match matrix columns");
-        }
-        
-        double[] result = new double[this.rows];
-        for (int i = 0; i < this.rows; i++) {
-            double sum = 0.0;
-            for (int j = 0; j < this.cols; j++) {
-                sum += this.get(i, j) * stateVector[j];
+        double[] result = new double[rows * other.cols];
+        for (int row = 0; row < rows; row++) {
+            int rowOffset = row * cols;
+            int resultOffset = row * other.cols;
+            for (int col = 0; col < other.cols; col++) {
+                double sum = 0.0;
+                for (int k = 0; k < cols; k++) {
+                    sum += data[rowOffset + k] * other.data[k * other.cols + col];
+                }
+                result[resultOffset + col] = sum;
             }
-            result[i] = sum;
         }
-        
-        return result;
+        return new RmRMatrix(rows, other.cols, result);
     }
-    
-    /**
-     * Linear flip solution - RmR optimization technique
-     * Applies flip transformation for solubility
-     * 
-     * @return flipped matrix
-     */
+
     @NonNull
     public RmRMatrix linearFlip() {
-        RmRMatrix result = new RmRMatrix(this.rows, this.cols);
-        // Use tolerance threshold to avoid overflow with very small values
-        final double epsilon = 1e-15;
+        double[] result = new double[data.length];
         for (int i = 0; i < data.length; i++) {
-            // Flip: negate and invert (if non-zero and above threshold)
-            if (Math.abs(data[i]) > epsilon) {
-                result.data[i] = -1.0 / data[i];
-            } else {
-                result.data[i] = 0.0;
-            }
+            double value = data[i];
+            result[i] = value == 0.0 ? 0.0 : -1.0 / value;
         }
-        return result;
+        return new RmRMatrix(rows, cols, result);
     }
-    
-    /**
-     * Clone this matrix
-     * 
-     * @return cloned matrix
-     */
+
     @NonNull
-    public RmRMatrix clone() {
-        return new RmRMatrix(this.rows, this.cols, this.data);
+    public double[] copyData() {
+        double[] copy = new double[data.length];
+        System.arraycopy(data, 0, copy, 0, data.length);
+        return copy;
+    }
+
+    @NonNull
+    public static RmRMatrix identity(int size) {
+        if (size <= 0) {
+            throw new IllegalArgumentException("Identity size must be positive.");
+        }
+        RmRMatrix identity = new RmRMatrix(size, size);
+        for (int i = 0; i < size; i++) {
+            identity.data[i * size + i] = 1.0;
+        }
+        return identity;
+    }
+
+    private void validateBounds(int row, int col) {
+        if (row < 0 || row >= rows || col < 0 || col >= cols) {
+            throw new IndexOutOfBoundsException("Invalid matrix index.");
+        }
+    }
+
+    private void ensureSameSize(RmRMatrix other) {
+        if (rows != other.rows || cols != other.cols) {
+            throw new IllegalArgumentException("Matrix sizes must match.");
+        }
     }
 }
