@@ -192,6 +192,11 @@ Estados de queries de banco de dados rastreados através de representações mat
 
 ## Licença
 
+Para autoria, atribuição e separação entre o AndroidX original e o módulo RmR, consulte:
+
+- [Autoria, Atribuição e Licenciamento](AUTORIA_E_LICENCA_PT.md)
+- [Licença do módulo (Apache 2.0)](LICENSE.md)
+
 ```
 Copyright (C) 2026 Rafael Melo Reis (RmR)
 

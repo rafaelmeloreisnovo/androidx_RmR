@@ -133,9 +133,12 @@ This index helps you find the right documentation for your needs.
 3. [DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md) - Section 9: Use Case Scenarios
 
 ### Legal and Compliance
-1. [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) - Legal compliance framework
-2. [README.md](README.md) - License section
-3. All source files - Copyright headers
+1. [AUTHORSHIP_AND_LICENSE.md](AUTHORSHIP_AND_LICENSE.md) - Authorship, attribution, and licensing
+2. [AUTORIA_E_LICENCA_PT.md](AUTORIA_E_LICENCA_PT.md) - Autoria, atribuição e licenciamento
+3. [LICENSE.md](LICENSE.md) - Apache 2.0 license text for the module
+4. [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) - Legal compliance framework
+5. [README.md](README.md) - License section
+6. All source files - Copyright headers
 
 ---
 

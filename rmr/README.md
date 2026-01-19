@@ -184,6 +184,11 @@ The RmR library is organized into specialized modules:
 
 ## License
 
+For explicit authorship, attribution, and separation between upstream AndroidX and the RmR module, see the documentation below:
+
+- [Authorship, Attribution, and Licensing](AUTHORSHIP_AND_LICENSE.md)
+- [Module License (Apache 2.0)](LICENSE.md)
+
 ```
 Copyright (C) 2026 Rafael Melo Reis (RmR)
 
