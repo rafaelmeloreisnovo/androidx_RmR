@@ -17,193 +17,63 @@
 package androidx.rmr.navigation;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RestrictTo;
 import androidx.rmr.core.RmRMatrix;
-import androidx.rmr.core.RmRState;
 
-/**
- * Optimized navigation state using RmR matrix-based approach.
- * 
- * <p>RmRNavigationState provides minimal footprint navigation tracking without
- * traditional backstack overhead. Navigation state is represented as matrix
- * transformations, enabling:
- * <ul>
- *   <li>O(1) navigation operations</li>
- *   <li>Predictable memory usage independent of backstack depth</li>
- *   <li>Cache-friendly destination storage</li>
- *   <li>Zero allocation during navigation</li>
- * </ul>
- * 
- * <p>State dimensions:
- * <ul>
- *   <li>0: Current destination ID</li>
- *   <li>1: Navigation arguments hash</li>
- *   <li>2: Backstack depth</li>
- *   <li>3: Navigation options flags</li>
- * </ul>
- * 
- * @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
- */
-@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public final class RmRNavigationState {
-    
-    /**
-     * Internal state representation
-     */
-    @NonNull
-    private final RmRState state;
-    
-    /**
-     * Current destination identifier
-     */
-    private final int destinationId;
-    
-    /**
-     * Creates navigation state at initial destination
-     */
+    private final int backStackDepth;
+    private final int currentDestinationId;
+    private final RmRMatrix stateMatrix;
+
     public RmRNavigationState() {
-        this(RmRState.forNavigation(), 0);
+        this(0, 0);
     }
-    
-    /**
-     * Creates navigation state with specified destination
-     * 
-     * @param state RmR state
-     * @param destinationId current destination
-     */
-    private RmRNavigationState(@NonNull RmRState state, int destinationId) {
-        this.state = state;
-        this.destinationId = destinationId;
+
+    private RmRNavigationState(int backStackDepth, int currentDestinationId) {
+        if (backStackDepth < 0) {
+            throw new IllegalArgumentException("Back stack depth cannot be negative.");
+        }
+        this.backStackDepth = backStackDepth;
+        this.currentDestinationId = currentDestinationId;
+        this.stateMatrix = buildStateMatrix(backStackDepth, currentDestinationId);
     }
-    
-    /**
-     * Gets current destination ID
-     * 
-     * @return destination identifier
-     */
-    public int getDestinationId() {
-        return destinationId;
+
+    public int getBackStackDepth() {
+        return backStackDepth;
     }
-    
-    /**
-     * Navigates to new destination
-     * 
-     * @param newDestinationId target destination
-     * @return new navigation state
-     */
+
+    public int getCurrentDestinationId() {
+        return currentDestinationId;
+    }
+
     @NonNull
-    public RmRNavigationState navigateTo(int newDestinationId) {
-        return navigateTo(newDestinationId, 0);
+    public RmRNavigationState navigateTo(int destinationId) {
+        return new RmRNavigationState(backStackDepth + 1, destinationId);
     }
-    
-    /**
-     * Navigates to new destination with arguments
-     * 
-     * @param newDestinationId target destination
-     * @param argumentsHash hash of navigation arguments
-     * @return new navigation state
-     */
-    @NonNull
-    public RmRNavigationState navigateTo(int newDestinationId, int argumentsHash) {
-        // Update state vector with new destination info
-        double[] navVector = {
-            (double) newDestinationId,
-            (double) argumentsHash,
-            state.extractVector(0)[2] + 1.0, // increment backstack depth
-            0.0 // default options
-        };
-        
-        RmRState newState = state.updateVector(0, navVector);
-        newState = newState.transform();
-        
-        return new RmRNavigationState(newState, newDestinationId);
-    }
-    
-    /**
-     * Navigates back to previous destination
-     * 
-     * @return navigation state after pop, or this if at root
-     */
+
     @NonNull
     public RmRNavigationState popBackStack() {
-        double depth = state.extractVector(0)[2];
-        if (depth <= 0.0) {
-            return this; // Already at root
+        if (backStackDepth == 0) {
+            return this;
         }
-        
-        // Use linear flip to reverse navigation
-        RmRState reversed = state.optimize();
-        
-        // Update backstack depth
-        double[] navVector = state.extractVector(0);
-        navVector[2] -= 1.0;
-        reversed = reversed.updateVector(0, navVector);
-        
-        // Extract previous destination from state
-        int prevDestination = (int) Math.abs(reversed.extractVector(0)[0]);
-        
-        return new RmRNavigationState(reversed, prevDestination);
+        return new RmRNavigationState(backStackDepth - 1, currentDestinationId);
     }
-    
-    /**
-     * Gets current backstack depth
-     * 
-     * @return number of entries in backstack
-     */
-    public int getBackStackDepth() {
-        return (int) state.extractVector(0)[2];
-    }
-    
-    /**
-     * Gets arguments hash for current destination
-     * 
-     * @return arguments hash code
-     */
-    public int getArgumentsHash() {
-        return (int) state.extractVector(0)[1];
-    }
-    
-    /**
-     * Computes navigation path prediction
-     * 
-     * @param targetDestination target to predict path to
-     * @return predicted transition cost
-     */
-    public double predictNavigationCost(int targetDestination) {
-        double[] input = {
-            (double) destinationId,
-            (double) targetDestination,
-            0.0,
-            0.0
-        };
-        
-        double[] result = state.computeDeterministicPoint(input);
-        
-        // Return manhattan distance as cost metric
-        double cost = 0.0;
-        for (double val : result) {
-            cost += Math.abs(val);
-        }
-        return cost;
-    }
-    
-    /**
-     * Creates optimized navigation state
-     * 
-     * @return optimized state with reduced footprint
-     */
+
     @NonNull
-    public RmRNavigationState createOptimized() {
-        RmRState optimized = state.optimize();
-        return new RmRNavigationState(optimized, destinationId);
+    public RmRMatrix getStateMatrix() {
+        return stateMatrix;
     }
-    
-    /**
-     * Checks if at root destination
-     * 
-     * @return true if backstack is empty
-     */
-    public boolean isAtRoot() {
-        return getBackStackDepth() == 0;
+
+    @NonNull
+    public double[] getStateVector() {
+        return new double[] {backStackDepth, currentDestinationId, stateMatrix.get(0, 2), stateMatrix.get(0, 3)};
+    }
+
+    private static RmRMatrix buildStateMatrix(int depth, int destinationId) {
+        RmRMatrix matrix = RmRMatrix.identity(4);
+        matrix.set(0, 0, depth);
+        matrix.set(0, 1, destinationId);
+        matrix.set(0, 2, depth == 0 ? 0.0 : 1.0);
+        matrix.set(0, 3, destinationId == 0 ? 0.0 : 1.0);
+        return matrix;
     }
 }

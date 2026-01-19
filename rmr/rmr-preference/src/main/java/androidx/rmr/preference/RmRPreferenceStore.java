@@ -17,342 +17,61 @@
 package androidx.rmr.preference;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
-import androidx.rmr.core.RmRMatrix;
-import androidx.rmr.core.RmRState;
+import androidx.rmr.core.RmRUtils;
 
-/**
- * Optimized preference storage using RmR matrix-based approach.
- * 
- * <p>RmRPreferenceStore provides minimal footprint preference management without
- * HashMap overhead. Preferences are stored as matrix indices with values in
- * deterministic matrix positions, enabling:
- * <ul>
- *   <li>O(1) preference access</li>
- *   <li>Predictable memory layout</li>
- *   <li>Cache-friendly preference storage</li>
- *   <li>Minimal allocation overhead</li>
- * </ul>
- * 
- * <p>Storage dimensions:
- * <ul>
- *   <li>0: Preference key hash</li>
- *   <li>1: Preference value (encoded as double)</li>
- *   <li>2: Preference type (0=int, 1=float, 2=boolean, 3=string hash)</li>
- *   <li>3: Dirty flag for persistence</li>
- * </ul>
- * 
- * @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
- */
-@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public final class RmRPreferenceStore {
-    
-    /**
-     * Preference type constants
-     */
-    public static final int TYPE_INT = 0;
-    public static final int TYPE_FLOAT = 1;
-    public static final int TYPE_BOOLEAN = 2;
-    public static final int TYPE_STRING_HASH = 3;
-    
-    /**
-     * Maximum number of preference slots
-     */
-    private static final int MAX_PREFERENCES = 64;
-    
-    /**
-     * Internal state representation
-     */
-    @NonNull
-    private final RmRState state;
-    
-    /**
-     * Preference mapping matrix (maps key hash to slot)
-     */
-    @NonNull
-    private final RmRMatrix mapping;
-    
-    /**
-     * Creates empty preference store
-     */
+    private static final int DEFAULT_CAPACITY = 256;
+
+    private final String[] keys;
+    private final double[] values;
+    private final int capacity;
+
     public RmRPreferenceStore() {
-        this(RmRState.forPreferences(), new RmRMatrix(MAX_PREFERENCES, 4));
+        this(DEFAULT_CAPACITY);
     }
-    
-    /**
-     * Creates preference store with specified state
-     * 
-     * @param state RmR state
-     * @param mapping preference mapping matrix
-     */
-    private RmRPreferenceStore(@NonNull RmRState state, @NonNull RmRMatrix mapping) {
-        this.state = state;
-        this.mapping = mapping;
-    }
-    
-    /**
-     * Stores integer preference
-     * 
-     * @param key preference key
-     * @param value integer value
-     * @return new preference store with value stored
-     */
-    @NonNull
-    public RmRPreferenceStore putInt(@NonNull String key, int value) {
-        return putValue(key, (double) value, TYPE_INT);
-    }
-    
-    /**
-     * Gets integer preference
-     * 
-     * @param key preference key
-     * @param defaultValue default if not found
-     * @return stored value or default
-     */
-    public int getInt(@NonNull String key, int defaultValue) {
-        double[] entry = getValue(key);
-        if (entry != null && (int) entry[2] == TYPE_INT) {
-            return (int) entry[1];
+
+    public RmRPreferenceStore(int capacity) {
+        if (capacity <= 0) {
+            throw new IllegalArgumentException("Capacity must be positive.");
         }
-        return defaultValue;
+        this.capacity = capacity;
+        this.keys = new String[capacity];
+        this.values = new double[capacity];
     }
-    
-    /**
-     * Stores float preference
-     * 
-     * @param key preference key
-     * @param value float value
-     * @return new preference store with value stored
-     */
-    @NonNull
-    public RmRPreferenceStore putFloat(@NonNull String key, float value) {
-        return putValue(key, (double) value, TYPE_FLOAT);
+
+    public void putDouble(@NonNull String key, double value) {
+        int index = findSlot(key, true);
+        keys[index] = key;
+        values[index] = value;
     }
-    
-    /**
-     * Gets float preference
-     * 
-     * @param key preference key
-     * @param defaultValue default if not found
-     * @return stored value or default
-     */
-    public float getFloat(@NonNull String key, float defaultValue) {
-        double[] entry = getValue(key);
-        if (entry != null && (int) entry[2] == TYPE_FLOAT) {
-            return (float) entry[1];
+
+    public double getDouble(@NonNull String key, double defaultValue) {
+        int index = findSlot(key, false);
+        if (index == -1) {
+            return defaultValue;
         }
-        return defaultValue;
+        return values[index];
     }
-    
-    /**
-     * Stores boolean preference
-     * 
-     * @param key preference key
-     * @param value boolean value
-     * @return new preference store with value stored
-     */
-    @NonNull
-    public RmRPreferenceStore putBoolean(@NonNull String key, boolean value) {
-        return putValue(key, value ? 1.0 : 0.0, TYPE_BOOLEAN);
-    }
-    
-    /**
-     * Gets boolean preference
-     * 
-     * @param key preference key
-     * @param defaultValue default if not found
-     * @return stored value or default
-     */
-    public boolean getBoolean(@NonNull String key, boolean defaultValue) {
-        double[] entry = getValue(key);
-        if (entry != null && (int) entry[2] == TYPE_BOOLEAN) {
-            return entry[1] != 0.0;
-        }
-        return defaultValue;
-    }
-    
-    /**
-     * Stores string preference as hash
-     * 
-     * @param key preference key
-     * @param value string value
-     * @return new preference store with value stored
-     */
-    @NonNull
-    public RmRPreferenceStore putString(@NonNull String key, @NonNull String value) {
-        return putValue(key, (double) value.hashCode(), TYPE_STRING_HASH);
-    }
-    
-    /**
-     * Gets string hash preference
-     * 
-     * @param key preference key
-     * @param defaultHash default hash if not found
-     * @return stored hash or default
-     */
-    public int getStringHash(@NonNull String key, int defaultHash) {
-        double[] entry = getValue(key);
-        if (entry != null && (int) entry[2] == TYPE_STRING_HASH) {
-            return (int) entry[1];
-        }
-        return defaultHash;
-    }
-    
-    /**
-     * Removes preference
-     * 
-     * @param key preference key
-     * @return new preference store without the key
-     */
-    @NonNull
-    public RmRPreferenceStore remove(@NonNull String key) {
-        int slot = findSlot(key);
-        if (slot < 0) {
-            return this; // Not found
-        }
-        
-        RmRMatrix newMapping = mapping.clone();
-        // Clear slot
-        newMapping.set(slot, 0, 0.0);
-        newMapping.set(slot, 1, 0.0);
-        newMapping.set(slot, 2, 0.0);
-        newMapping.set(slot, 3, 0.0);
-        
-        return new RmRPreferenceStore(state, newMapping);
-    }
-    
-    /**
-     * Checks if preference exists
-     * 
-     * @param key preference key
-     * @return true if key exists
-     */
+
     public boolean contains(@NonNull String key) {
-        return findSlot(key) >= 0;
+        return findSlot(key, false) != -1;
     }
-    
-    /**
-     * Clears all preferences
-     * 
-     * @return empty preference store
-     */
-    @NonNull
-    public RmRPreferenceStore clear() {
-        return new RmRPreferenceStore();
-    }
-    
-    /**
-     * Gets all dirty preference keys (modified since last commit)
-     * 
-     * @return array of key hashes that are dirty
-     */
-    @NonNull
-    public int[] getDirtyKeys() {
-        int count = 0;
-        for (int i = 0; i < MAX_PREFERENCES; i++) {
-            if (mapping.get(i, 3) != 0.0) {
-                count++;
+
+    private int findSlot(String key, boolean forInsert) {
+        int startIndex = RmRUtils.hashToIndex(key, capacity);
+        for (int i = 0; i < capacity; i++) {
+            int probe = (startIndex + i) % capacity;
+            String storedKey = keys[probe];
+            if (storedKey == null) {
+                return forInsert ? probe : -1;
+            }
+            if (storedKey.equals(key)) {
+                return probe;
             }
         }
-        
-        int[] dirty = new int[count];
-        int index = 0;
-        for (int i = 0; i < MAX_PREFERENCES; i++) {
-            if (mapping.get(i, 3) != 0.0) {
-                dirty[index++] = (int) mapping.get(i, 0);
-            }
-        }
-        
-        return dirty;
-    }
-    
-    /**
-     * Marks all preferences as committed (clears dirty flags)
-     * 
-     * @return new preference store with clean state
-     */
-    @NonNull
-    public RmRPreferenceStore commit() {
-        RmRMatrix newMapping = mapping.clone();
-        for (int i = 0; i < MAX_PREFERENCES; i++) {
-            newMapping.set(i, 3, 0.0); // Clear dirty flag
-        }
-        return new RmRPreferenceStore(state, newMapping);
-    }
-    
-    /**
-     * Internal: stores value in preference matrix
-     */
-    @NonNull
-    private RmRPreferenceStore putValue(@NonNull String key, double value, int type) {
-        int keyHash = key.hashCode();
-        int slot = findOrAllocateSlot(keyHash);
-        
-        if (slot < 0) {
-            throw new IllegalStateException(
-                "Preference store is full (max " + MAX_PREFERENCES + " entries). " +
-                "Remove existing preferences or clear the store before adding new ones.");
-        }
-        
-        RmRMatrix newMapping = mapping.clone();
-        newMapping.set(slot, 0, (double) keyHash);
-        newMapping.set(slot, 1, value);
-        newMapping.set(slot, 2, (double) type);
-        newMapping.set(slot, 3, 1.0); // Mark as dirty
-        
-        return new RmRPreferenceStore(state, newMapping);
-    }
-    
-    /**
-     * Internal: gets value from preference matrix
-     */
-    @Nullable
-    private double[] getValue(@NonNull String key) {
-        int slot = findSlot(key);
-        if (slot < 0) {
-            return null;
-        }
-        
-        return new double[] {
-            mapping.get(slot, 0), // key hash
-            mapping.get(slot, 1), // value
-            mapping.get(slot, 2), // type
-            mapping.get(slot, 3)  // dirty
-        };
-    }
-    
-    /**
-     * Internal: finds slot for key
-     */
-    private int findSlot(@NonNull String key) {
-        int keyHash = key.hashCode();
-        for (int i = 0; i < MAX_PREFERENCES; i++) {
-            if ((int) mapping.get(i, 0) == keyHash) {
-                return i;
-            }
+        if (forInsert) {
+            throw new IllegalStateException("Preference store is full.");
         }
         return -1;
-    }
-    
-    /**
-     * Internal: finds existing slot or allocates new one
-     */
-    private int findOrAllocateSlot(int keyHash) {
-        // First try to find existing
-        for (int i = 0; i < MAX_PREFERENCES; i++) {
-            if ((int) mapping.get(i, 0) == keyHash) {
-                return i;
-            }
-        }
-        
-        // Allocate new slot
-        for (int i = 0; i < MAX_PREFERENCES; i++) {
-            if (mapping.get(i, 0) == 0.0) {
-                return i;
-            }
-        }
-        
-        return -1; // Store full - caller should handle
     }
 }
