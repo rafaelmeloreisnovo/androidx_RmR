@@ -22,9 +22,35 @@ public final class RmRMatrixOps {
     private RmRMatrixOps() {
     }
 
+    private static native void multiplyNative(
+            double[] aData,
+            int aRows,
+            int aCols,
+            double[] bData,
+            int bRows,
+            int bCols,
+            double[] resultData);
+
     @NonNull
     public static RmRMatrix multiply(@NonNull RmRMatrix left, @NonNull RmRMatrix right) {
-        return left.multiply(right);
+        if (left.getCols() != right.getRows()) {
+            throw new IllegalArgumentException("Incompatible matrix dimensions.");
+        }
+        if (RmRHardware.ensureNativeLoaded()) {
+            int rows = left.getRows();
+            int cols = right.getCols();
+            double[] result = new double[rows * cols];
+            multiplyNative(
+                    left.getDataUnsafe(),
+                    rows,
+                    left.getCols(),
+                    right.getDataUnsafe(),
+                    right.getRows(),
+                    cols,
+                    result);
+            return RmRMatrix.wrap(rows, cols, result);
+        }
+        return multiplyScalar(left, right);
     }
 
     @NonNull
@@ -35,5 +61,27 @@ public final class RmRMatrixOps {
     @NonNull
     public static RmRMatrix linearFlip(@NonNull RmRMatrix matrix) {
         return matrix.linearFlip();
+    }
+
+    @NonNull
+    private static RmRMatrix multiplyScalar(@NonNull RmRMatrix left, @NonNull RmRMatrix right) {
+        int rows = left.getRows();
+        int cols = left.getCols();
+        int resultCols = right.getCols();
+        double[] leftData = left.getDataUnsafe();
+        double[] rightData = right.getDataUnsafe();
+        double[] result = new double[rows * resultCols];
+        for (int row = 0; row < rows; row++) {
+            int rowOffset = row * cols;
+            int resultOffset = row * resultCols;
+            for (int col = 0; col < resultCols; col++) {
+                double sum = 0.0;
+                for (int k = 0; k < cols; k++) {
+                    sum += leftData[rowOffset + k] * rightData[k * resultCols + col];
+                }
+                result[resultOffset + col] = sum;
+            }
+        }
+        return RmRMatrix.wrap(rows, resultCols, result);
     }
 }
