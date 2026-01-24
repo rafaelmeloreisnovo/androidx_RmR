@@ -74,12 +74,12 @@ public final class RmRMatrixOps {
         for (int row = 0; row < rows; row++) {
             int rowOffset = row * cols;
             int resultOffset = row * resultCols;
-            for (int col = 0; col < resultCols; col++) {
-                double sum = 0.0;
-                for (int k = 0; k < cols; k++) {
-                    sum += leftData[rowOffset + k] * rightData[k * resultCols + col];
+            for (int k = 0; k < cols; k++) {
+                double leftValue = leftData[rowOffset + k];
+                int rightOffset = k * resultCols;
+                for (int col = 0; col < resultCols; col++) {
+                    result[resultOffset + col] += leftValue * rightData[rightOffset + col];
                 }
-                result[resultOffset + col] = sum;
             }
         }
         return RmRMatrix.wrap(rows, resultCols, result);
