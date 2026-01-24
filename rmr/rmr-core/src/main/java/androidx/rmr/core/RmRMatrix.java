@@ -79,22 +79,7 @@ public final class RmRMatrix {
 
     @NonNull
     public RmRMatrix multiply(@NonNull RmRMatrix other) {
-        if (cols != other.rows) {
-            throw new IllegalArgumentException("Incompatible matrix dimensions.");
-        }
-        double[] result = new double[rows * other.cols];
-        for (int row = 0; row < rows; row++) {
-            int rowOffset = row * cols;
-            int resultOffset = row * other.cols;
-            for (int col = 0; col < other.cols; col++) {
-                double sum = 0.0;
-                for (int k = 0; k < cols; k++) {
-                    sum += data[rowOffset + k] * other.data[k * other.cols + col];
-                }
-                result[resultOffset + col] = sum;
-            }
-        }
-        return new RmRMatrix(rows, other.cols, result);
+        return RmRMatrixOps.multiply(this, other);
     }
 
     @NonNull
@@ -124,6 +109,14 @@ public final class RmRMatrix {
             identity.data[i * size + i] = 1.0;
         }
         return identity;
+    }
+
+    double[] getDataUnsafe() {
+        return data;
+    }
+
+    static RmRMatrix wrap(int rows, int cols, double[] data) {
+        return new RmRMatrix(rows, cols, data);
     }
 
     private void validateBounds(int row, int col) {
