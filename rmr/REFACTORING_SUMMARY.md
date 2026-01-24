@@ -11,6 +11,7 @@ This document summarizes the comprehensive refactoring of the RmR (Rafael Melo R
 3. **Modular Architecture**: New "rafaelia" module for advanced optimizations
 4. **Strict Legal Compliance**: Comprehensive licensing with automatic enforcement
 5. **International Legal Framework**: Multi-jurisdictional penalty provisions
+6. **Native First for Hot Paths**: Matrix multiplication routed to JNI/SIMD when available
 
 ## WHAT WAS IMPLEMENTED
 
