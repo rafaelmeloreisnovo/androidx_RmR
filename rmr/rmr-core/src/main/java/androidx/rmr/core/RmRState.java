@@ -54,14 +54,18 @@ public final class RmRState {
 
     @NonNull
     public double[] computeDeterministicPoint(@NonNull double[] inputVector) {
-        if (inputVector.length != matrix.getCols()) {
+        int rows = matrix.getRows();
+        int cols = matrix.getCols();
+        if (inputVector.length != cols) {
             throw new IllegalArgumentException("Input vector length must match matrix columns.");
         }
-        double[] output = new double[matrix.getRows()];
-        for (int row = 0; row < matrix.getRows(); row++) {
+        double[] output = new double[rows];
+        double[] data = matrix.getDataUnsafe();
+        for (int row = 0; row < rows; row++) {
             double sum = 0.0;
-            for (int col = 0; col < matrix.getCols(); col++) {
-                sum += matrix.get(row, col) * inputVector[col];
+            int rowOffset = row * cols;
+            for (int col = 0; col < cols; col++) {
+                sum += data[rowOffset + col] * inputVector[col];
             }
             output[row] = sum;
         }
