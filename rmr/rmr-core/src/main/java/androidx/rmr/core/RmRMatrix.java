@@ -70,9 +70,14 @@ public final class RmRMatrix {
     @NonNull
     public RmRMatrix add(@NonNull RmRMatrix other) {
         ensureSameSize(other);
-        double[] result = new double[data.length];
-        for (int i = 0; i < data.length; i++) {
-            result[i] = data[i] + other.data[i];
+        int length = data.length;
+        if (length == 0) {
+            return new RmRMatrix(rows, cols, new double[0]);
+        }
+        double[] result = new double[length];
+        double[] otherData = other.data;
+        for (int i = 0; i < length; i++) {
+            result[i] = data[i] + otherData[i];
         }
         return new RmRMatrix(rows, cols, result);
     }
@@ -84,8 +89,12 @@ public final class RmRMatrix {
 
     @NonNull
     public RmRMatrix linearFlip() {
-        double[] result = new double[data.length];
-        for (int i = 0; i < data.length; i++) {
+        int length = data.length;
+        if (length == 0) {
+            return new RmRMatrix(rows, cols, new double[0]);
+        }
+        double[] result = new double[length];
+        for (int i = 0; i < length; i++) {
             double value = data[i];
             result[i] = value == 0.0 ? 0.0 : -1.0 / value;
         }
@@ -105,8 +114,9 @@ public final class RmRMatrix {
             throw new IllegalArgumentException("Identity size must be positive.");
         }
         RmRMatrix identity = new RmRMatrix(size, size);
+        double[] identityData = identity.data;
         for (int i = 0; i < size; i++) {
-            identity.data[i * size + i] = 1.0;
+            identityData[i * size + i] = 1.0;
         }
         return identity;
     }
