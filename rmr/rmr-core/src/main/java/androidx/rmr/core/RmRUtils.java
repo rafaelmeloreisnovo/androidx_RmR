@@ -23,17 +23,24 @@ public final class RmRUtils {
     }
 
     public static long computeBitrafSeed(@NonNull double[] inputVector) {
+        if (inputVector.length == 0) {
+            return 0L;
+        }
         long seed = 0L;
-        for (double value : inputVector) {
-            seed ^= Double.doubleToLongBits(value);
+        for (int i = 0; i < inputVector.length; i++) {
+            seed ^= Double.doubleToLongBits(inputVector[i]);
         }
         return seed;
     }
 
     public static double distanceEuclidean(@NonNull double[] a, @NonNull double[] b) {
         validateSameLength(a, b);
+        int length = a.length;
+        if (length == 0) {
+            return 0.0;
+        }
         double sum = 0.0;
-        for (int i = 0; i < a.length; i++) {
+        for (int i = 0; i < length; i++) {
             double diff = a[i] - b[i];
             sum += diff * diff;
         }
@@ -42,22 +49,33 @@ public final class RmRUtils {
 
     public static double distanceManhattan(@NonNull double[] a, @NonNull double[] b) {
         validateSameLength(a, b);
+        int length = a.length;
+        if (length == 0) {
+            return 0.0;
+        }
         double sum = 0.0;
-        for (int i = 0; i < a.length; i++) {
-            sum += Math.abs(a[i] - b[i]);
+        for (int i = 0; i < length; i++) {
+            double diff = a[i] - b[i];
+            sum += diff < 0.0 ? -diff : diff;
         }
         return sum;
     }
 
     public static double cosineSimilarity(@NonNull double[] a, @NonNull double[] b) {
         validateSameLength(a, b);
+        int length = a.length;
+        if (length == 0) {
+            return 0.0;
+        }
         double dot = 0.0;
         double normA = 0.0;
         double normB = 0.0;
-        for (int i = 0; i < a.length; i++) {
-            dot += a[i] * b[i];
-            normA += a[i] * a[i];
-            normB += b[i] * b[i];
+        for (int i = 0; i < length; i++) {
+            double valueA = a[i];
+            double valueB = b[i];
+            dot += valueA * valueB;
+            normA += valueA * valueA;
+            normB += valueB * valueB;
         }
         if (normA == 0.0 || normB == 0.0) {
             return 0.0;
@@ -66,11 +84,14 @@ public final class RmRUtils {
     }
 
     public static int hashToIndex(@NonNull String key, int capacity) {
+        if (capacity <= 0) {
+            throw new IllegalArgumentException("Capacity must be positive.");
+        }
         int hash = 0;
         for (int i = 0; i < key.length(); i++) {
             hash = 31 * hash + key.charAt(i);
         }
-        return Math.abs(hash) % capacity;
+        return (hash & 0x7fffffff) % capacity;
     }
 
     private static void validateSameLength(double[] a, double[] b) {

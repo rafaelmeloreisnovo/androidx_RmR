@@ -70,37 +70,31 @@ public final class RmRMatrix {
     @NonNull
     public RmRMatrix add(@NonNull RmRMatrix other) {
         ensureSameSize(other);
-        double[] result = new double[data.length];
-        for (int i = 0; i < data.length; i++) {
-            result[i] = data[i] + other.data[i];
+        int length = data.length;
+        if (length == 0) {
+            return new RmRMatrix(rows, cols, new double[0]);
+        }
+        double[] result = new double[length];
+        double[] otherData = other.data;
+        for (int i = 0; i < length; i++) {
+            result[i] = data[i] + otherData[i];
         }
         return new RmRMatrix(rows, cols, result);
     }
 
     @NonNull
     public RmRMatrix multiply(@NonNull RmRMatrix other) {
-        if (cols != other.rows) {
-            throw new IllegalArgumentException("Incompatible matrix dimensions.");
-        }
-        double[] result = new double[rows * other.cols];
-        for (int row = 0; row < rows; row++) {
-            int rowOffset = row * cols;
-            int resultOffset = row * other.cols;
-            for (int col = 0; col < other.cols; col++) {
-                double sum = 0.0;
-                for (int k = 0; k < cols; k++) {
-                    sum += data[rowOffset + k] * other.data[k * other.cols + col];
-                }
-                result[resultOffset + col] = sum;
-            }
-        }
-        return new RmRMatrix(rows, other.cols, result);
+        return RmRMatrixOps.multiply(this, other);
     }
 
     @NonNull
     public RmRMatrix linearFlip() {
-        double[] result = new double[data.length];
-        for (int i = 0; i < data.length; i++) {
+        int length = data.length;
+        if (length == 0) {
+            return new RmRMatrix(rows, cols, new double[0]);
+        }
+        double[] result = new double[length];
+        for (int i = 0; i < length; i++) {
             double value = data[i];
             result[i] = value == 0.0 ? 0.0 : -1.0 / value;
         }
@@ -120,10 +114,19 @@ public final class RmRMatrix {
             throw new IllegalArgumentException("Identity size must be positive.");
         }
         RmRMatrix identity = new RmRMatrix(size, size);
+        double[] identityData = identity.data;
         for (int i = 0; i < size; i++) {
-            identity.data[i * size + i] = 1.0;
+            identityData[i * size + i] = 1.0;
         }
         return identity;
+    }
+
+    double[] getDataUnsafe() {
+        return data;
+    }
+
+    static RmRMatrix wrap(int rows, int cols, double[] data) {
+        return new RmRMatrix(rows, cols, data);
     }
 
     private void validateBounds(int row, int col) {
