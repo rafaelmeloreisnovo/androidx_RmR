@@ -36,7 +36,7 @@ public final class RmRMatrixOps {
         if (left.getCols() != right.getRows()) {
             throw new IllegalArgumentException("Incompatible matrix dimensions.");
         }
-        if (RmRHardware.isNativeAvailable()) {
+        if (RmRHardware.ensureNativeLoaded()) {
             int rows = left.getRows();
             int cols = right.getCols();
             double[] result = new double[rows * cols];

@@ -12,6 +12,7 @@ This document summarizes the comprehensive refactoring of the RmR (Rafael Melo R
 4. **Strict Legal Compliance**: Comprehensive licensing with automatic enforcement
 5. **International Legal Framework**: Multi-jurisdictional penalty provisions
 6. **Native First for Hot Paths**: Matrix multiplication routed to JNI/SIMD when available
+7. **Thin-Layer Java Shell**: Java APIs act as minimal wrappers over native low-level primitives
 
 ## WHAT WAS IMPLEMENTED
 

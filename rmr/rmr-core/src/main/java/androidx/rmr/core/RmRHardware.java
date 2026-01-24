@@ -22,6 +22,7 @@ import androidx.annotation.NonNull;
 
 public final class RmRHardware {
     private static volatile boolean sNativeAvailable;
+    private static volatile boolean sTriedNativeLoad;
 
     public enum SimdLevel {
         NONE,
@@ -66,6 +67,24 @@ public final class RmRHardware {
 
     static boolean isNativeAvailable() {
         return sNativeAvailable;
+    }
+
+    static boolean ensureNativeLoaded() {
+        if (sTriedNativeLoad) {
+            return sNativeAvailable;
+        }
+        synchronized (RmRHardware.class) {
+            if (sTriedNativeLoad) {
+                return sNativeAvailable;
+            }
+            sTriedNativeLoad = true;
+            try {
+                System.loadLibrary("rmr-core-native");
+            } catch (UnsatisfiedLinkError e) {
+                sNativeAvailable = false;
+            }
+            return sNativeAvailable;
+        }
     }
 
     static void setNativeAvailable(boolean available) {
