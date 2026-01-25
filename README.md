@@ -92,6 +92,7 @@ taxonomia de MVP e bibliografia.
 - [RmR Documentation Index](rmr/DOCUMENTATION_INDEX.md) — índice geral e navegação entre documentos.
 - [Documentação Acadêmica Profissional (Nível PhD)](rmr/DOCUMENTACAO_ACADEMICA_PROFISSIONAL.md) — matriz
   de 60 níveis, 30 formas de MVP, comparativos e referências.
+- [Guia de Performance Bruta (CPU/GC/IOPS)](rmr/PERFORMANCE_BRUTA_GUIDE.md) — hotspots, prioridades e ganhos.
 
 # Contribution Guide
 
