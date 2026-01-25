@@ -83,6 +83,17 @@ Para validar que a alteração não degrada o fluxo de builds, recomenda-se:
 27. **Checklist de release** (impacto em publicação).
 28. **Rastreabilidade completa** (origem da mudança e autoria).
 
+## Documentação acadêmica e profissional (RmR)
+
+Para aplicar a documentação de nível PhD no contexto AndroidX, utilize o módulo RmR como base de referência
+acadêmica e técnica. A documentação abaixo é navegável, formal e orientada a pesquisa, com benchmarks,
+taxonomia de MVP e bibliografia.
+
+- [RmR Documentation Index](rmr/DOCUMENTATION_INDEX.md) — índice geral e navegação entre documentos.
+- [Documentação Acadêmica Profissional (Nível PhD)](rmr/DOCUMENTACAO_ACADEMICA_PROFISSIONAL.md) — matriz
+  de 60 níveis, 30 formas de MVP, comparativos e referências.
+- [Guia de Performance Bruta (CPU/GC/IOPS)](rmr/PERFORMANCE_BRUTA_GUIDE.md) — hotspots, prioridades e ganhos.
+
 # Contribution Guide
 
 For contributions via GitHub, see the [GitHub Contribution Guide](CONTRIBUTING.md).

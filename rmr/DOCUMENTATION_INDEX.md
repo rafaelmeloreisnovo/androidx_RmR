@@ -46,6 +46,18 @@ This index helps you find the right documentation for your needs.
   - Exemplos de uso
   - Padrões de integração
 
+- **[DOCUMENTACAO_ACADEMICA_PROFISSIONAL.md](DOCUMENTACAO_ACADEMICA_PROFISSIONAL.md)** 🎓 (Português, ~18 KB)
+  - Documentação formal nível PhD
+  - Matriz de 60 níveis de profundidade
+  - 30 formas profissionais de MVP
+  - Benchmarking, comparativos e gráficos
+  - Referências bibliográficas
+
+- **[PERFORMANCE_BRUTA_GUIDE.md](PERFORMANCE_BRUTA_GUIDE.md)** ⚙️ (Português, ~8 KB)
+  - Prioridades de performance (CPU/GC/IOPS)
+  - Hot paths em RmR/Compose/Room/Camera
+  - Checklist de execução e ganhos esperados
+
 ### What You'll Learn:
 - ✅ RmR philosophy (matrix-based computation)
 - ✅ How to use each module (lifecycle, navigation, preferences, room)
@@ -122,6 +134,7 @@ This index helps you find the right documentation for your needs.
 2. [SEMANTIC_ARCHITECTURE.md](SEMANTIC_ARCHITECTURE.md) - Complete optimization framework
 3. [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) - Bare-metal improvements
 4. [EXPECTED_BENCHMARKS.md](EXPECTED_BENCHMARKS.md) - Projected benchmarks and performance targets
+5. [PERFORMANCE_BRUTA_GUIDE.md](PERFORMANCE_BRUTA_GUIDE.md) - CPU/GC/IOPS priorities and hot paths
 
 ### Component Usage
 1. [README.md](README.md) - Usage section for all components
@@ -133,6 +146,7 @@ This index helps you find the right documentation for your needs.
 2. [DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md) - Section 3: Architectural Differences
 3. [NAVIGATION_MVP_GUIDE.md](NAVIGATION_MVP_GUIDE.md) - MVP structure and navigation layout
 4. [README.md](README.md) - Philosophy and Design Principles sections
+5. [DOCUMENTACAO_ACADEMICA_PROFISSIONAL.md](DOCUMENTACAO_ACADEMICA_PROFISSIONAL.md) - PhD-level academic structure
 
 ### Migration Guides
 1. [DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md) - Section 10: Migration Considerations
@@ -169,12 +183,14 @@ This index helps you find the right documentation for your needs.
 1. [SEMANTIC_ARCHITECTURE.md](SEMANTIC_ARCHITECTURE.md) - Optimization framework
 2. [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) - Low-level details
 3. [DIFFERENCES_FROM_ORIGINAL.md - Section 6](DIFFERENCES_FROM_ORIGINAL.md#6-performance-differences) - Benchmarks
+4. [PERFORMANCE_BRUTA_GUIDE.md](PERFORMANCE_BRUTA_GUIDE.md) - Execution checklist and gains
 
 ### For Project Managers
 **Understand:**
 1. [DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md) - Executive summary
 2. [RESUMO_FINAL.md](RESUMO_FINAL.md) or [IMPLEMENTATION_SUMMARY_FINAL.md](IMPLEMENTATION_SUMMARY_FINAL.md) - Implementation summary
 3. [DIFFERENCES_FROM_ORIGINAL.md - Section 9](DIFFERENCES_FROM_ORIGINAL.md#9-use-case-scenarios) - When to use
+4. [DOCUMENTACAO_ACADEMICA_PROFISSIONAL.md](DOCUMENTACAO_ACADEMICA_PROFISSIONAL.md) - Academic/market value rationale
 
 ### For Portuguese Speakers
 **Documentação em português:**
@@ -209,7 +225,7 @@ From the documentation:
 
 ## 📝 Document Information
 
-- **Total Documentation:** 9 files, ~113 KB
+- **Total Documentation:** 10 files, ~131 KB
 - **Languages:** English and Portuguese (Brazilian)
 - **Last Updated:** January 3, 2026
 - **Maintained By:** Rafael Melo Reis (RmR)
