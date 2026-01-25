@@ -130,6 +130,20 @@ public final class RmRMatrixOps {
     }
 
     private static void multiplyVector(double[] leftData, double[] rightData, double[] result, int rows, int cols) {
+        if (cols == 4) {
+            double v0 = rightData[0];
+            double v1 = rightData[1];
+            double v2 = rightData[2];
+            double v3 = rightData[3];
+            for (int row = 0; row < rows; row++) {
+                int rowOffset = row * 4;
+                result[row] = leftData[rowOffset] * v0
+                        + leftData[rowOffset + 1] * v1
+                        + leftData[rowOffset + 2] * v2
+                        + leftData[rowOffset + 3] * v3;
+            }
+            return;
+        }
         for (int row = 0; row < rows; row++) {
             int rowOffset = row * cols;
             double sum = 0.0;

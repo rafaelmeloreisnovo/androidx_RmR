@@ -23,11 +23,12 @@ public final class RmRUtils {
     }
 
     public static long computeBitrafSeed(@NonNull double[] inputVector) {
-        if (inputVector.length == 0) {
+        int length = inputVector.length;
+        if (length == 0) {
             return 0L;
         }
         long seed = 0L;
-        for (int i = 0; i < inputVector.length; i++) {
+        for (int i = 0; i < length; i++) {
             seed ^= Double.doubleToLongBits(inputVector[i]);
         }
         return seed;

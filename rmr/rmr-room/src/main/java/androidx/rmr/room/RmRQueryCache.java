@@ -43,7 +43,18 @@ public final class RmRQueryCache {
     }
 
     public void put(@NonNull String queryKey, @NonNull RmRMatrix result) {
-        int index = indexOf(queryKey);
+        if (size == 0) {
+            keys[0] = queryKey;
+            values[0] = result;
+            size = 1;
+            return;
+        }
+        String frontKey = keys[0];
+        if (frontKey == queryKey || queryKey.equals(frontKey)) {
+            values[0] = result;
+            return;
+        }
+        int index = indexOfFrom(queryKey, 1);
         if (index >= 0) {
             values[index] = result;
             moveToFront(index);
@@ -63,7 +74,14 @@ public final class RmRQueryCache {
 
     @Nullable
     public RmRMatrix get(@NonNull String queryKey) {
-        int index = indexOf(queryKey);
+        if (size == 0) {
+            return null;
+        }
+        String frontKey = keys[0];
+        if (frontKey == queryKey || queryKey.equals(frontKey)) {
+            return values[0];
+        }
+        int index = indexOfFrom(queryKey, 1);
         if (index < 0) {
             return null;
         }
@@ -77,7 +95,11 @@ public final class RmRQueryCache {
     }
 
     private int indexOf(String queryKey) {
-        for (int i = 0; i < size; i++) {
+        return indexOfFrom(queryKey, 0);
+    }
+
+    private int indexOfFrom(String queryKey, int startIndex) {
+        for (int i = startIndex; i < size; i++) {
             String key = keys[i];
             if (key == queryKey || queryKey.equals(key)) {
                 return i;

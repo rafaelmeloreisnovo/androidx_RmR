@@ -27,6 +27,8 @@ public final class RmRPreferenceStore {
     private final int capacity;
     private final int capacityMask;
     private final boolean powerOfTwo;
+    private String lastKey;
+    private int lastIndex = -1;
 
     public RmRPreferenceStore() {
         this(DEFAULT_CAPACITY);
@@ -47,6 +49,8 @@ public final class RmRPreferenceStore {
         int index = findSlot(key, true);
         keys[index] = key;
         values[index] = value;
+        lastKey = key;
+        lastIndex = index;
     }
 
     public double getDouble(@NonNull String key, double defaultValue) {
@@ -54,6 +58,8 @@ public final class RmRPreferenceStore {
         if (index == -1) {
             return defaultValue;
         }
+        lastKey = key;
+        lastIndex = index;
         return values[index];
     }
 
@@ -62,6 +68,12 @@ public final class RmRPreferenceStore {
     }
 
     private int findSlot(String key, boolean forInsert) {
+        if (lastIndex >= 0 && lastKey != null && (lastKey == key || lastKey.equals(key))) {
+            String cachedKey = keys[lastIndex];
+            if (cachedKey != null && (cachedKey == key || cachedKey.equals(key))) {
+                return lastIndex;
+            }
+        }
         int startIndex = powerOfTwo
                 ? RmRUtils.hashToIndexPowerOfTwo(key, capacityMask)
                 : RmRUtils.hashToIndex(key, capacity);
@@ -72,6 +84,8 @@ public final class RmRPreferenceStore {
                 return forInsert ? probe : -1;
             }
             if (storedKey == key || storedKey.equals(key)) {
+                lastKey = key;
+                lastIndex = probe;
                 return probe;
             }
         }
