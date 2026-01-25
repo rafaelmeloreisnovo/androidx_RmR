@@ -121,6 +121,7 @@ This index helps you find the right documentation for your needs.
 1. [DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md) - Section 6: Performance Differences
 2. [SEMANTIC_ARCHITECTURE.md](SEMANTIC_ARCHITECTURE.md) - Complete optimization framework
 3. [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) - Bare-metal improvements
+4. [EXPECTED_BENCHMARKS.md](EXPECTED_BENCHMARKS.md) - Projected benchmarks and performance targets
 
 ### Component Usage
 1. [README.md](README.md) - Usage section for all components
