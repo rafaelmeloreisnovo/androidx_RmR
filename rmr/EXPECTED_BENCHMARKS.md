@@ -13,6 +13,7 @@ This document defines **expected benchmark results** and **performance projectio
 - Establish performance targets for matrix operations and deterministic state transitions.
 - Provide measurable baselines to compare Java fallback vs. native SIMD implementations.
 - Define the benchmarking methodology and acceptance criteria for future test runs.
+- Capture **upstream-aligned adaptations** where applicable, ensuring **integrity**, **compatibility expectations**, and **optimization strategy parity** without copying upstream code.
 
 > **Important**: Values in this document are **projections**, derived from architectural design, cache analysis, and SIMD capability assumptions. Actual results must be captured in dedicated benchmark runs and appended to this document.
 
@@ -47,7 +48,37 @@ This document defines **expected benchmark results** and **performance projectio
 
 ---
 
-## 3. Expected Performance (Projected)
+## 3. Upstream Alignment, Integrity, and Optimization Strategy
+
+This section documents how the benchmark plan and performance projections **align with upstream practices** while preserving **RmR originality and integrity**.
+
+### 3.1 Upstream-Inspired Measurement Practices (Adapted)
+
+When coherent with upstream expectations, the benchmarking approach mirrors the **spirit** of upstream AndroidX performance validation, adapted to RmR’s matrix-based architecture:
+
+- **Comparable metrics**: latency, throughput, memory footprint, and allocation rates.
+- **Warm-up and stabilization**: report steady-state measurements after sufficient JIT warm-up.
+- **Device diversity**: include ARM64 and x86_64 coverage, as commonly used in upstream performance profiling.
+
+### 3.2 Integrity and Non-Derivative Implementation
+
+RmR’s benchmarks are **non-derivative** and represent original implementation logic:
+
+- **No copied algorithms or upstream code paths** are used in the benchmark harness.
+- Methodology alignment focuses on **measurement rigor**, not code reuse.
+- All performance targets are **RM R-specific**, based on its deterministic matrix model.
+
+### 3.3 Optimization Strategy Coherence
+
+Where upstream focuses on performance stability and predictable scaling, RmR extends and adapts these goals with explicit low-level strategies:
+
+- **Cache-blocking + SIMD synergy** is treated as the primary optimization axis.
+- **Branch-minimized hot paths** and **allocation-free loops** are mandatory for core benchmarks.
+- **Hardware detection & adaptive dispatch** are part of baseline measurement to ensure realistic targets per architecture.
+
+---
+
+## 4. Expected Performance (Projected)
 
 ### 3.1 Matrix Multiply (Dense)
 
@@ -86,7 +117,7 @@ This document defines **expected benchmark results** and **performance projectio
 
 ---
 
-## 4. Memory Footprint Projections
+## 5. Memory Footprint Projections
 
 ### 4.1 Object Footprint (Expected)
 
@@ -103,7 +134,7 @@ This document defines **expected benchmark results** and **performance projectio
 
 ---
 
-## 5. Performance Targets (Acceptance Criteria)
+## 6. Performance Targets (Acceptance Criteria)
 
 These targets define minimum acceptable performance for the RmR core:
 
@@ -115,7 +146,7 @@ These targets define minimum acceptable performance for the RmR core:
 
 ---
 
-## 6. Benchmarking Tools (Planned)
+## 7. Benchmarking Tools (Planned)
 
 - Android Benchmark Library (if available)
 - JMH for JVM standalone tests
@@ -123,7 +154,7 @@ These targets define minimum acceptable performance for the RmR core:
 
 ---
 
-## 7. Reporting Format (Future Results)
+## 8. Reporting Format (Future Results)
 
 Benchmark results should append to this document using the following format:
 
@@ -138,7 +169,7 @@ Build: <Java/Native>
 
 ---
 
-## 8. Risk and Variability Factors
+## 9. Risk and Variability Factors
 
 - **Thermal throttling** on mobile devices can reduce performance.
 - **JIT warm-up** may affect Java fallback measurements.
@@ -147,7 +178,7 @@ Build: <Java/Native>
 
 ---
 
-## 9. Next Steps
+## 10. Next Steps
 
 1. Implement automated benchmark harness.
 2. Capture baseline measurements on reference devices.
