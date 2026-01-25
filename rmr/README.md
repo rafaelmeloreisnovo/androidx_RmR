@@ -292,6 +292,7 @@ These documents provide:
 
 ### Additional Documentation
 
+- **[NAVIGATION_MVP_GUIDE.md](NAVIGATION_MVP_GUIDE.md)** - Formal navigation structure and MVP responsibilities
 - **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Implementation overview
 - **[IMPLEMENTATION_SUMMARY_FINAL.md](IMPLEMENTATION_SUMMARY_FINAL.md)** - Final implementation summary
 - **[RESUMO_FINAL.md](RESUMO_FINAL.md)** - Resumo final (Português)

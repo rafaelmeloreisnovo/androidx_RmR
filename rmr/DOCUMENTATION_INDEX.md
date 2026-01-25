@@ -100,6 +100,11 @@ This index helps you find the right documentation for your needs.
   - Legal compliance framework
   - Dependency elimination
   - Performance benchmarks
+  
+- **[NAVIGATION_MVP_GUIDE.md](NAVIGATION_MVP_GUIDE.md)** 🧭 (English)
+  - Formal navigation structure
+  - MVP responsibilities
+  - Module boundary rules
 
 ### What You'll Learn:
 - ✅ Advanced optimization techniques
@@ -125,7 +130,8 @@ This index helps you find the right documentation for your needs.
 ### Architecture and Design
 1. [SEMANTIC_ARCHITECTURE.md](SEMANTIC_ARCHITECTURE.md) - Complete architectural framework
 2. [DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md) - Section 3: Architectural Differences
-3. [README.md](README.md) - Philosophy and Design Principles sections
+3. [NAVIGATION_MVP_GUIDE.md](NAVIGATION_MVP_GUIDE.md) - MVP structure and navigation layout
+4. [README.md](README.md) - Philosophy and Design Principles sections
 
 ### Migration Guides
 1. [DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md) - Section 10: Migration Considerations
@@ -137,8 +143,9 @@ This index helps you find the right documentation for your needs.
 2. [AUTORIA_E_LICENCA_PT.md](AUTORIA_E_LICENCA_PT.md) - Autoria, atribuição e licenciamento
 3. [LICENSE.md](LICENSE.md) - Apache 2.0 license text for the module
 4. [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) - Legal compliance framework
-5. [README.md](README.md) - License section
-6. All source files - Copyright headers
+5. [NAVIGATION_MVP_GUIDE.md](NAVIGATION_MVP_GUIDE.md) - Authorship and separation notes
+6. [README.md](README.md) - License section
+7. All source files - Copyright headers
 
 ---
 
