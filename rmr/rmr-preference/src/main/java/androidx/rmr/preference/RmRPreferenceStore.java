@@ -25,6 +25,8 @@ public final class RmRPreferenceStore {
     private final String[] keys;
     private final double[] values;
     private final int capacity;
+    private final int capacityMask;
+    private final boolean powerOfTwo;
 
     public RmRPreferenceStore() {
         this(DEFAULT_CAPACITY);
@@ -35,6 +37,8 @@ public final class RmRPreferenceStore {
             throw new IllegalArgumentException("Capacity must be positive.");
         }
         this.capacity = capacity;
+        this.powerOfTwo = (capacity & (capacity - 1)) == 0;
+        this.capacityMask = powerOfTwo ? capacity - 1 : 0;
         this.keys = new String[capacity];
         this.values = new double[capacity];
     }
@@ -58,12 +62,11 @@ public final class RmRPreferenceStore {
     }
 
     private int findSlot(String key, boolean forInsert) {
-        int startIndex = RmRUtils.hashToIndex(key, capacity);
+        int startIndex = powerOfTwo
+                ? RmRUtils.hashToIndexPowerOfTwo(key, capacityMask)
+                : RmRUtils.hashToIndex(key, capacity);
         for (int i = 0; i < capacity; i++) {
-            int probe = startIndex + i;
-            if (probe >= capacity) {
-                probe -= capacity;
-            }
+            int probe = powerOfTwo ? (startIndex + i) & capacityMask : (startIndex + i) % capacity;
             String storedKey = keys[probe];
             if (storedKey == null) {
                 return forInsert ? probe : -1;

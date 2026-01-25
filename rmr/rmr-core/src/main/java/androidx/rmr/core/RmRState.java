@@ -61,11 +61,12 @@ public final class RmRState {
         }
         double[] output = new double[rows];
         double[] data = matrix.getDataUnsafe();
+        double[] localInput = inputVector;
         for (int row = 0; row < rows; row++) {
             double sum = 0.0;
             int rowOffset = row * cols;
             for (int col = 0; col < cols; col++) {
-                sum += data[rowOffset + col] * inputVector[col];
+                sum += data[rowOffset + col] * localInput[col];
             }
             output[row] = sum;
         }

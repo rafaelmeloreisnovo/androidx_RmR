@@ -71,7 +71,9 @@ public final class RmRMatrixOps {
         double[] leftData = left.getDataUnsafe();
         double[] rightData = right.getDataUnsafe();
         double[] result = new double[rows * resultCols];
-        if (shouldTransposeForMultiply(rows, cols, resultCols)) {
+        if (resultCols == 1) {
+            multiplyVector(leftData, rightData, result, rows, cols);
+        } else if (shouldTransposeForMultiply(rows, cols, resultCols)) {
             multiplyWithTransposedRight(leftData, rightData, result, rows, cols, resultCols);
         } else {
             multiplyStandard(leftData, rightData, result, rows, cols, resultCols);
@@ -124,6 +126,17 @@ public final class RmRMatrixOps {
                 }
                 result[resultOffset + col] = sum;
             }
+        }
+    }
+
+    private static void multiplyVector(double[] leftData, double[] rightData, double[] result, int rows, int cols) {
+        for (int row = 0; row < rows; row++) {
+            int rowOffset = row * cols;
+            double sum = 0.0;
+            for (int k = 0; k < cols; k++) {
+                sum += leftData[rowOffset + k] * rightData[k];
+            }
+            result[row] = sum;
         }
     }
 

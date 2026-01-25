@@ -68,6 +68,13 @@ public final class RmRUtils {
     }
 
     public static double cosineSimilarity(@NonNull double[] a, @NonNull double[] b) {
+        if (a == b) {
+            double norm = 0.0;
+            for (double value : a) {
+                norm += value * value;
+            }
+            return norm == 0.0 ? 0.0 : 1.0;
+        }
         validateSameLength(a, b);
         int length = a.length;
         if (length == 0) {
@@ -99,6 +106,15 @@ public final class RmRUtils {
             hash = 31 * hash + key.charAt(i);
         }
         return (hash & 0x7fffffff) % capacity;
+    }
+
+    public static int hashToIndexPowerOfTwo(@NonNull String key, int mask) {
+        int hash = 0;
+        int length = key.length();
+        for (int i = 0; i < length; i++) {
+            hash = 31 * hash + key.charAt(i);
+        }
+        return hash & mask;
     }
 
     private static void validateSameLength(double[] a, double[] b) {
