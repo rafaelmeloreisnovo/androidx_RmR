@@ -78,7 +78,8 @@ public final class RmRQueryCache {
 
     private int indexOf(String queryKey) {
         for (int i = 0; i < size; i++) {
-            if (queryKey.equals(keys[i])) {
+            String key = keys[i];
+            if (key == queryKey || queryKey.equals(key)) {
                 return i;
             }
         }
@@ -91,10 +92,8 @@ public final class RmRQueryCache {
         }
         String key = keys[index];
         RmRMatrix value = values[index];
-        for (int i = index; i > 0; i--) {
-            keys[i] = keys[i - 1];
-            values[i] = values[i - 1];
-        }
+        System.arraycopy(keys, 0, keys, 1, index);
+        System.arraycopy(values, 0, values, 1, index);
         keys[0] = key;
         values[0] = value;
     }

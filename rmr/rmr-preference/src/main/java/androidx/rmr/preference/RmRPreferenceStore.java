@@ -60,12 +60,15 @@ public final class RmRPreferenceStore {
     private int findSlot(String key, boolean forInsert) {
         int startIndex = RmRUtils.hashToIndex(key, capacity);
         for (int i = 0; i < capacity; i++) {
-            int probe = (startIndex + i) % capacity;
+            int probe = startIndex + i;
+            if (probe >= capacity) {
+                probe -= capacity;
+            }
             String storedKey = keys[probe];
             if (storedKey == null) {
                 return forInsert ? probe : -1;
             }
-            if (storedKey.equals(key)) {
+            if (storedKey == key || storedKey.equals(key)) {
                 return probe;
             }
         }
