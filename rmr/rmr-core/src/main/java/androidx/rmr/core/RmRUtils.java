@@ -103,6 +103,9 @@ public final class RmRUtils {
         }
         int hash = 0;
         int length = key.length();
+        if (length == 0) {
+            return 0;
+        }
         for (int i = 0; i < length; i++) {
             hash = 31 * hash + key.charAt(i);
         }
@@ -112,6 +115,9 @@ public final class RmRUtils {
     public static int hashToIndexPowerOfTwo(@NonNull String key, int mask) {
         int hash = 0;
         int length = key.length();
+        if (length == 0) {
+            return 0;
+        }
         for (int i = 0; i < length; i++) {
             hash = 31 * hash + key.charAt(i);
         }

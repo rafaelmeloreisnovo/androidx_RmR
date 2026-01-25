@@ -76,9 +76,15 @@ public final class RmRMatrix {
             return new RmRMatrix(rows, cols, new double[0]);
         }
         double[] result = new double[length];
-        double[] otherData = other.data;
-        for (int i = 0; i < length; i++) {
-            result[i] = localData[i] + otherData[i];
+        if (other == this) {
+            for (int i = 0; i < length; i++) {
+                result[i] = localData[i] + localData[i];
+            }
+        } else {
+            double[] otherData = other.data;
+            for (int i = 0; i < length; i++) {
+                result[i] = localData[i] + otherData[i];
+            }
         }
         return new RmRMatrix(rows, cols, result);
     }

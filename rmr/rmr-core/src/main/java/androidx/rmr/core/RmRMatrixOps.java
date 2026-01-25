@@ -73,6 +73,8 @@ public final class RmRMatrixOps {
         double[] result = new double[rows * resultCols];
         if (resultCols == 1) {
             multiplyVector(leftData, rightData, result, rows, cols);
+        } else if (shouldBlockForMultiply(rows, cols, resultCols)) {
+            multiplyBlocked(leftData, rightData, result, rows, cols, resultCols);
         } else if (shouldTransposeForMultiply(rows, cols, resultCols)) {
             multiplyWithTransposedRight(leftData, rightData, result, rows, cols, resultCols);
         } else {
@@ -152,6 +154,41 @@ public final class RmRMatrixOps {
             }
             result[row] = sum;
         }
+    }
+
+    private static void multiplyBlocked(
+            double[] leftData,
+            double[] rightData,
+            double[] result,
+            int rows,
+            int cols,
+            int resultCols) {
+        int block = 32;
+        for (int row = 0; row < rows; row += block) {
+            int rowMax = Math.min(row + block, rows);
+            for (int k = 0; k < cols; k += block) {
+                int kMax = Math.min(k + block, cols);
+                for (int col = 0; col < resultCols; col += block) {
+                    int colMax = Math.min(col + block, resultCols);
+                    for (int ii = row; ii < rowMax; ii++) {
+                        int rowOffset = ii * cols;
+                        int resultOffset = ii * resultCols;
+                        for (int kk = k; kk < kMax; kk++) {
+                            double leftValue = leftData[rowOffset + kk];
+                            int rightOffset = kk * resultCols;
+                            for (int jj = col; jj < colMax; jj++) {
+                                result[resultOffset + jj] += leftValue * rightData[rightOffset + jj];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean shouldBlockForMultiply(int rows, int cols, int resultCols) {
+        long workload = (long) rows * (long) cols * (long) resultCols;
+        return rows >= 8 && cols >= 8 && resultCols >= 8 && workload >= 65536L;
     }
 
     private static boolean shouldTransposeForMultiply(int rows, int cols, int resultCols) {
