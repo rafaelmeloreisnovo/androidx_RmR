@@ -32,6 +32,9 @@ This document applies to the `rmr/` directory and its submodules (`rmr-core`, `r
 ### Authorship Scope
 All files under `rmr/` are authored by Rafael Melo Reis **unless explicitly stated otherwise** in a per‑file note or in the section below.
 
+### Name and Attribution
+The "RmR" name and the author attribution in `rmr/` must remain intact. If a derived work reuses the name, it must preserve attribution and licensing terms defined in this document and in `rmr/LICENSE.md`.
+
 ---
 
 ## 4. Derived or Third‑Party Content (Required Listing)
