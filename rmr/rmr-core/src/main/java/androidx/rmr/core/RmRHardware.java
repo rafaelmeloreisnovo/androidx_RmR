@@ -23,6 +23,7 @@ import androidx.annotation.NonNull;
 public final class RmRHardware {
     private static volatile boolean sNativeAvailable;
     private static volatile boolean sTriedNativeLoad;
+    private static volatile SimdLevel sCachedSimdLevel;
 
     public enum SimdLevel {
         NONE,
@@ -49,6 +50,10 @@ public final class RmRHardware {
 
     @NonNull
     public static SimdLevel getSimdLevel() {
+        SimdLevel cached = sCachedSimdLevel;
+        if (cached != null) {
+            return cached;
+        }
         String[] abis = Build.SUPPORTED_ABIS;
         if (abis != null) {
             for (String abi : abis) {
@@ -56,17 +61,17 @@ public final class RmRHardware {
                     continue;
                 }
                 if (abi.contains("arm64") || abi.contains("armeabi")) {
-                    return SimdLevel.NEON;
+                    return cacheSimdLevel(SimdLevel.NEON);
                 }
                 if (abi.contains("x86_64")) {
-                    return SimdLevel.AVX;
+                    return cacheSimdLevel(SimdLevel.AVX);
                 }
                 if (abi.contains("x86")) {
-                    return SimdLevel.SSE;
+                    return cacheSimdLevel(SimdLevel.SSE);
                 }
             }
         }
-        return SimdLevel.NONE;
+        return cacheSimdLevel(SimdLevel.NONE);
     }
 
     static boolean isNativeAvailable() {
@@ -94,5 +99,11 @@ public final class RmRHardware {
 
     static void setNativeAvailable(boolean available) {
         sNativeAvailable = available;
+    }
+
+    @NonNull
+    private static SimdLevel cacheSimdLevel(@NonNull SimdLevel level) {
+        sCachedSimdLevel = level;
+        return level;
     }
 }
