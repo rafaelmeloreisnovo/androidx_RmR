@@ -33,10 +33,14 @@ public final class RmRHardware {
 
     static {
         sNativeAvailable = false;
+        sTriedNativeLoad = false;
         try {
             System.loadLibrary("rmr-core-native");
+            sNativeAvailable = true;
+            sTriedNativeLoad = true;
         } catch (UnsatisfiedLinkError e) {
             sNativeAvailable = false;
+            sTriedNativeLoad = true;
         }
     }
 
@@ -80,6 +84,7 @@ public final class RmRHardware {
             sTriedNativeLoad = true;
             try {
                 System.loadLibrary("rmr-core-native");
+                sNativeAvailable = true;
             } catch (UnsatisfiedLinkError e) {
                 sNativeAvailable = false;
             }
