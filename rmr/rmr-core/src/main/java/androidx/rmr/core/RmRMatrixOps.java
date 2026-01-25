@@ -71,6 +71,25 @@ public final class RmRMatrixOps {
         double[] leftData = left.getDataUnsafe();
         double[] rightData = right.getDataUnsafe();
         double[] result = new double[rows * resultCols];
+        if (resultCols == 1) {
+            multiplyVector(leftData, rightData, result, rows, cols);
+        } else if (shouldBlockForMultiply(rows, cols, resultCols)) {
+            multiplyBlocked(leftData, rightData, result, rows, cols, resultCols);
+        } else if (shouldTransposeForMultiply(rows, cols, resultCols)) {
+            multiplyWithTransposedRight(leftData, rightData, result, rows, cols, resultCols);
+        } else {
+            multiplyStandard(leftData, rightData, result, rows, cols, resultCols);
+        }
+        return RmRMatrix.wrap(rows, resultCols, result);
+    }
+
+    private static void multiplyStandard(
+            double[] leftData,
+            double[] rightData,
+            double[] result,
+            int rows,
+            int cols,
+            int resultCols) {
         for (int row = 0; row < rows; row++) {
             int rowOffset = row * cols;
             int resultOffset = row * resultCols;
@@ -82,6 +101,98 @@ public final class RmRMatrixOps {
                 }
             }
         }
-        return RmRMatrix.wrap(rows, resultCols, result);
+    }
+
+    private static void multiplyWithTransposedRight(
+            double[] leftData,
+            double[] rightData,
+            double[] result,
+            int rows,
+            int cols,
+            int resultCols) {
+        double[] rightTransposed = new double[resultCols * cols];
+        for (int row = 0; row < cols; row++) {
+            int rightOffset = row * resultCols;
+            for (int col = 0; col < resultCols; col++) {
+                rightTransposed[col * cols + row] = rightData[rightOffset + col];
+            }
+        }
+        for (int row = 0; row < rows; row++) {
+            int leftOffset = row * cols;
+            int resultOffset = row * resultCols;
+            for (int col = 0; col < resultCols; col++) {
+                int rightOffset = col * cols;
+                double sum = 0.0;
+                for (int k = 0; k < cols; k++) {
+                    sum += leftData[leftOffset + k] * rightTransposed[rightOffset + k];
+                }
+                result[resultOffset + col] = sum;
+            }
+        }
+    }
+
+    private static void multiplyVector(double[] leftData, double[] rightData, double[] result, int rows, int cols) {
+        if (cols == 4) {
+            double v0 = rightData[0];
+            double v1 = rightData[1];
+            double v2 = rightData[2];
+            double v3 = rightData[3];
+            for (int row = 0; row < rows; row++) {
+                int rowOffset = row * 4;
+                result[row] = leftData[rowOffset] * v0
+                        + leftData[rowOffset + 1] * v1
+                        + leftData[rowOffset + 2] * v2
+                        + leftData[rowOffset + 3] * v3;
+            }
+            return;
+        }
+        for (int row = 0; row < rows; row++) {
+            int rowOffset = row * cols;
+            double sum = 0.0;
+            for (int k = 0; k < cols; k++) {
+                sum += leftData[rowOffset + k] * rightData[k];
+            }
+            result[row] = sum;
+        }
+    }
+
+    private static void multiplyBlocked(
+            double[] leftData,
+            double[] rightData,
+            double[] result,
+            int rows,
+            int cols,
+            int resultCols) {
+        int block = 32;
+        for (int row = 0; row < rows; row += block) {
+            int rowMax = Math.min(row + block, rows);
+            for (int k = 0; k < cols; k += block) {
+                int kMax = Math.min(k + block, cols);
+                for (int col = 0; col < resultCols; col += block) {
+                    int colMax = Math.min(col + block, resultCols);
+                    for (int ii = row; ii < rowMax; ii++) {
+                        int rowOffset = ii * cols;
+                        int resultOffset = ii * resultCols;
+                        for (int kk = k; kk < kMax; kk++) {
+                            double leftValue = leftData[rowOffset + kk];
+                            int rightOffset = kk * resultCols;
+                            for (int jj = col; jj < colMax; jj++) {
+                                result[resultOffset + jj] += leftValue * rightData[rightOffset + jj];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean shouldBlockForMultiply(int rows, int cols, int resultCols) {
+        long workload = (long) rows * (long) cols * (long) resultCols;
+        return rows >= 8 && cols >= 8 && resultCols >= 8 && workload >= 65536L;
+    }
+
+    private static boolean shouldTransposeForMultiply(int rows, int cols, int resultCols) {
+        long workload = (long) rows * (long) cols * (long) resultCols;
+        return workload >= 4096L;
     }
 }

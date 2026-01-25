@@ -27,6 +27,7 @@ public final class RmRLifecycleState {
 
     private final int state;
     private final RmRMatrix stateMatrix;
+    private final double[] stateVector;
 
     public RmRLifecycleState() {
         this(STATE_INITIALIZED);
@@ -36,6 +37,7 @@ public final class RmRLifecycleState {
         validateState(state);
         this.state = state;
         this.stateMatrix = buildStateMatrix(state);
+        this.stateVector = buildStateVector(state, stateMatrix);
     }
 
     public int getState() {
@@ -61,7 +63,7 @@ public final class RmRLifecycleState {
 
     @NonNull
     public double[] getStateVector() {
-        return new double[] {state, stateMatrix.get(0, 1), stateMatrix.get(0, 2), stateMatrix.get(0, 3)};
+        return stateVector.clone();
     }
 
     @NonNull
@@ -82,5 +84,9 @@ public final class RmRLifecycleState {
         matrix.set(0, 2, state >= STATE_STARTED ? 1.0 : 0.0);
         matrix.set(0, 3, state == STATE_RESUMED ? 1.0 : 0.0);
         return matrix;
+    }
+
+    private static double[] buildStateVector(int state, RmRMatrix matrix) {
+        return new double[] {state, matrix.get(0, 1), matrix.get(0, 2), matrix.get(0, 3)};
     }
 }
