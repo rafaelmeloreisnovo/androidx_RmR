@@ -25,6 +25,10 @@ public final class RmRPreferenceStore {
     private final String[] keys;
     private final double[] values;
     private final int capacity;
+    private final int capacityMask;
+    private final boolean powerOfTwo;
+    private String lastKey;
+    private int lastIndex = -1;
 
     public RmRPreferenceStore() {
         this(DEFAULT_CAPACITY);
@@ -35,6 +39,8 @@ public final class RmRPreferenceStore {
             throw new IllegalArgumentException("Capacity must be positive.");
         }
         this.capacity = capacity;
+        this.powerOfTwo = (capacity & (capacity - 1)) == 0;
+        this.capacityMask = powerOfTwo ? capacity - 1 : 0;
         this.keys = new String[capacity];
         this.values = new double[capacity];
     }
@@ -43,6 +49,8 @@ public final class RmRPreferenceStore {
         int index = findSlot(key, true);
         keys[index] = key;
         values[index] = value;
+        lastKey = key;
+        lastIndex = index;
     }
 
     public double getDouble(@NonNull String key, double defaultValue) {
@@ -50,6 +58,8 @@ public final class RmRPreferenceStore {
         if (index == -1) {
             return defaultValue;
         }
+        lastKey = key;
+        lastIndex = index;
         return values[index];
     }
 
@@ -58,14 +68,24 @@ public final class RmRPreferenceStore {
     }
 
     private int findSlot(String key, boolean forInsert) {
-        int startIndex = RmRUtils.hashToIndex(key, capacity);
+        if (lastIndex >= 0 && lastKey != null && (lastKey == key || lastKey.equals(key))) {
+            String cachedKey = keys[lastIndex];
+            if (cachedKey != null && (cachedKey == key || cachedKey.equals(key))) {
+                return lastIndex;
+            }
+        }
+        int startIndex = powerOfTwo
+                ? RmRUtils.hashToIndexPowerOfTwo(key, capacityMask)
+                : RmRUtils.hashToIndex(key, capacity);
         for (int i = 0; i < capacity; i++) {
-            int probe = (startIndex + i) % capacity;
+            int probe = powerOfTwo ? (startIndex + i) & capacityMask : (startIndex + i) % capacity;
             String storedKey = keys[probe];
             if (storedKey == null) {
                 return forInsert ? probe : -1;
             }
-            if (storedKey.equals(key)) {
+            if (storedKey == key || storedKey.equals(key)) {
+                lastKey = key;
+                lastIndex = probe;
                 return probe;
             }
         }
