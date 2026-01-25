@@ -70,14 +70,15 @@ public final class RmRMatrix {
     @NonNull
     public RmRMatrix add(@NonNull RmRMatrix other) {
         ensureSameSize(other);
-        int length = data.length;
+        double[] localData = data;
+        int length = localData.length;
         if (length == 0) {
             return new RmRMatrix(rows, cols, new double[0]);
         }
         double[] result = new double[length];
         double[] otherData = other.data;
         for (int i = 0; i < length; i++) {
-            result[i] = data[i] + otherData[i];
+            result[i] = localData[i] + otherData[i];
         }
         return new RmRMatrix(rows, cols, result);
     }
@@ -89,13 +90,14 @@ public final class RmRMatrix {
 
     @NonNull
     public RmRMatrix linearFlip() {
-        int length = data.length;
+        double[] localData = data;
+        int length = localData.length;
         if (length == 0) {
             return new RmRMatrix(rows, cols, new double[0]);
         }
         double[] result = new double[length];
         for (int i = 0; i < length; i++) {
-            double value = data[i];
+            double value = localData[i];
             result[i] = value == 0.0 ? 0.0 : -1.0 / value;
         }
         return new RmRMatrix(rows, cols, result);
@@ -103,9 +105,7 @@ public final class RmRMatrix {
 
     @NonNull
     public double[] copyData() {
-        double[] copy = new double[data.length];
-        System.arraycopy(data, 0, copy, 0, data.length);
-        return copy;
+        return data.clone();
     }
 
     @NonNull

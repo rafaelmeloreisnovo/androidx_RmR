@@ -71,6 +71,21 @@ public final class RmRMatrixOps {
         double[] leftData = left.getDataUnsafe();
         double[] rightData = right.getDataUnsafe();
         double[] result = new double[rows * resultCols];
+        if (shouldTransposeForMultiply(rows, cols, resultCols)) {
+            multiplyWithTransposedRight(leftData, rightData, result, rows, cols, resultCols);
+        } else {
+            multiplyStandard(leftData, rightData, result, rows, cols, resultCols);
+        }
+        return RmRMatrix.wrap(rows, resultCols, result);
+    }
+
+    private static void multiplyStandard(
+            double[] leftData,
+            double[] rightData,
+            double[] result,
+            int rows,
+            int cols,
+            int resultCols) {
         for (int row = 0; row < rows; row++) {
             int rowOffset = row * cols;
             int resultOffset = row * resultCols;
@@ -82,6 +97,38 @@ public final class RmRMatrixOps {
                 }
             }
         }
-        return RmRMatrix.wrap(rows, resultCols, result);
+    }
+
+    private static void multiplyWithTransposedRight(
+            double[] leftData,
+            double[] rightData,
+            double[] result,
+            int rows,
+            int cols,
+            int resultCols) {
+        double[] rightTransposed = new double[resultCols * cols];
+        for (int row = 0; row < cols; row++) {
+            int rightOffset = row * resultCols;
+            for (int col = 0; col < resultCols; col++) {
+                rightTransposed[col * cols + row] = rightData[rightOffset + col];
+            }
+        }
+        for (int row = 0; row < rows; row++) {
+            int leftOffset = row * cols;
+            int resultOffset = row * resultCols;
+            for (int col = 0; col < resultCols; col++) {
+                int rightOffset = col * cols;
+                double sum = 0.0;
+                for (int k = 0; k < cols; k++) {
+                    sum += leftData[leftOffset + k] * rightTransposed[rightOffset + k];
+                }
+                result[resultOffset + col] = sum;
+            }
+        }
+    }
+
+    private static boolean shouldTransposeForMultiply(int rows, int cols, int resultCols) {
+        long workload = (long) rows * (long) cols * (long) resultCols;
+        return workload >= 4096L;
     }
 }

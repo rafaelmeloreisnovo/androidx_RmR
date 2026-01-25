@@ -34,6 +34,9 @@ public final class RmRUtils {
     }
 
     public static double distanceEuclidean(@NonNull double[] a, @NonNull double[] b) {
+        if (a == b) {
+            return 0.0;
+        }
         validateSameLength(a, b);
         int length = a.length;
         if (length == 0) {
@@ -48,6 +51,9 @@ public final class RmRUtils {
     }
 
     public static double distanceManhattan(@NonNull double[] a, @NonNull double[] b) {
+        if (a == b) {
+            return 0.0;
+        }
         validateSameLength(a, b);
         int length = a.length;
         if (length == 0) {
@@ -88,7 +94,8 @@ public final class RmRUtils {
             throw new IllegalArgumentException("Capacity must be positive.");
         }
         int hash = 0;
-        for (int i = 0; i < key.length(); i++) {
+        int length = key.length();
+        for (int i = 0; i < length; i++) {
             hash = 31 * hash + key.charAt(i);
         }
         return (hash & 0x7fffffff) % capacity;

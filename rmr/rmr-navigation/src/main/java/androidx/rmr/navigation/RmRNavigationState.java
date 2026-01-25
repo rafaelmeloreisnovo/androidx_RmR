@@ -23,6 +23,7 @@ public final class RmRNavigationState {
     private final int backStackDepth;
     private final int currentDestinationId;
     private final RmRMatrix stateMatrix;
+    private final double[] stateVector;
 
     public RmRNavigationState() {
         this(0, 0);
@@ -35,6 +36,7 @@ public final class RmRNavigationState {
         this.backStackDepth = backStackDepth;
         this.currentDestinationId = currentDestinationId;
         this.stateMatrix = buildStateMatrix(backStackDepth, currentDestinationId);
+        this.stateVector = buildStateVector(backStackDepth, currentDestinationId, stateMatrix);
     }
 
     public int getBackStackDepth() {
@@ -65,7 +67,7 @@ public final class RmRNavigationState {
 
     @NonNull
     public double[] getStateVector() {
-        return new double[] {backStackDepth, currentDestinationId, stateMatrix.get(0, 2), stateMatrix.get(0, 3)};
+        return stateVector.clone();
     }
 
     private static RmRMatrix buildStateMatrix(int depth, int destinationId) {
@@ -75,5 +77,9 @@ public final class RmRNavigationState {
         matrix.set(0, 2, depth == 0 ? 0.0 : 1.0);
         matrix.set(0, 3, destinationId == 0 ? 0.0 : 1.0);
         return matrix;
+    }
+
+    private static double[] buildStateVector(int depth, int destinationId, RmRMatrix matrix) {
+        return new double[] {depth, destinationId, matrix.get(0, 2), matrix.get(0, 3)};
     }
 }
