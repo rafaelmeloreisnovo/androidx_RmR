@@ -20,52 +20,46 @@ project("rmr-core")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Common compiler flags for optimization
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ffast-math")
-
-# Architecture-specific optimizations
-if(${ANDROID_ABI} STREQUAL "arm64-v8a")
-    # ARM64 with NEON (always available on ARM64)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a")
-    message(STATUS "Building for ARM64 with NEON support")
-    
-elseif(${ANDROID_ABI} STREQUAL "armeabi-v7a")
-    # ARM32 with NEON
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv7-a -mfpu=neon -mfloat-abi=softfp")
-    message(STATUS "Building for ARM32 with NEON support")
-    
-elseif(${ANDROID_ABI} STREQUAL "x86_64")
-    # x86_64 with SSE2 baseline, enable AVX if available
-    # Note: AVX might not be available on all x86_64 Android devices
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -msse3")
-    message(STATUS "Building for x86_64 with SSE2/SSE3 support")
-    
-    # Optionally enable AVX (commented out for compatibility)
-    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
-    
-elseif(${ANDROID_ABI} STREQUAL "x86")
-    # x86 with SSE2
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2")
-    message(STATUS "Building for x86 with SSE2 support")
-endif()
-
-# Additional optimization flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fomit-frame-pointer")
-
-# Link-time optimization (LTO)
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -flto")
-endif()
-
 # Create the native library
 add_library(
     rmr-core-native
     SHARED
     rmr_matrix_native.cpp
 )
+
+# Common compiler flags for optimization (fast-math is controlled by Gradle)
+target_compile_options(rmr-core-native PRIVATE
+    -O3
+    -fno-exceptions
+    -fno-rtti
+    -funroll-loops
+)
+
+# Architecture-specific optimizations
+if(${ANDROID_ABI} STREQUAL "arm64-v8a")
+    # ARM64 with NEON (always available on ARM64)
+    target_compile_options(rmr-core-native PRIVATE -march=armv8-a)
+    message(STATUS "Building for ARM64 with NEON support")
+elseif(${ANDROID_ABI} STREQUAL "armeabi-v7a")
+    # ARM32 with NEON
+    target_compile_options(rmr-core-native PRIVATE -march=armv7-a -mfpu=neon -mfloat-abi=softfp)
+    message(STATUS "Building for ARM32 with NEON support")
+elseif(${ANDROID_ABI} STREQUAL "x86_64")
+    # x86_64 with SSE2 baseline, enable AVX if available
+    # Note: AVX might not be available on all x86_64 Android devices
+    target_compile_options(rmr-core-native PRIVATE -msse2 -msse3)
+    message(STATUS "Building for x86_64 with SSE2/SSE3 support")
+elseif(${ANDROID_ABI} STREQUAL "x86")
+    # x86 with SSE2
+    target_compile_options(rmr-core-native PRIVATE -msse2)
+    message(STATUS "Building for x86 with SSE2 support")
+endif()
+
+# Link-time optimization (LTO)
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(rmr-core-native PRIVATE -flto)
+    target_link_options(rmr-core-native PRIVATE -flto)
+endif()
 
 # Link against Android log library (for potential logging)
 find_library(log-lib log)
