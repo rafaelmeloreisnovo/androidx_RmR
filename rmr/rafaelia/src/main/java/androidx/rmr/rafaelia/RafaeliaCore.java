@@ -11,6 +11,8 @@ package androidx.rmr.rafaelia;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.NotThreadSafe;
+import androidx.annotation.ThreadSafe;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -52,16 +54,25 @@ import java.util.Map;
  * - Usage validation on every operation
  * - Automatic violation detection and reporting
  * - Cryptographic integrity verification
+ *
+ * THREADING:
+ * - Instances are not thread-safe. Callers must provide external synchronization when
+ *   accessing {@link #getDirectMemory()} or mutating the returned buffer.
+ * - Static operations are re-entrant, but callers must ensure exclusive access to the
+ *   supplied buffers/arrays when mutating data (for example, via
+ *   {@link #optimizedMemoryCopy(ByteBuffer, int, ByteBuffer, int, int)}).
  * 
  * @author Rafael Melo Reis
  * @version 1.0
  * @since 2026
  */
+@NotThreadSafe
 public final class RafaeliaCore {
     
     // Usage restriction enforcement
     private static final String AUTHORIZED_USER = "Rafael Melo Reis";
     private static final boolean ENFORCE_RESTRICTIONS = true;
+    private static final boolean DEBUG = Boolean.getBoolean("rafaelia.debug");
     private static volatile boolean sValidated = false;
     private static volatile boolean sNativeAvailable = false;
     
@@ -72,6 +83,7 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock VQF load vector (1..42).
      */
     @NonNull
+    @ThreadSafe
     public static int[] getVqfLoad() {
         return RafaeliaBootblock.getVqfLoad();
     }
@@ -80,6 +92,7 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock kernel identifier.
      */
     @NonNull
+    @ThreadSafe
     public static String getKernel() {
         return RafaeliaBootblock.KERNEL;
     }
@@ -88,6 +101,7 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock mode identifier.
      */
     @NonNull
+    @ThreadSafe
     public static String getMode() {
         return RafaeliaBootblock.MODE;
     }
@@ -96,6 +110,7 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock cognition identifier.
      */
     @NonNull
+    @ThreadSafe
     public static String getCognition() {
         return RafaeliaBootblock.COGNITION;
     }
@@ -104,6 +119,7 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock ethic identifier.
      */
     @NonNull
+    @ThreadSafe
     public static String getEthic() {
         return RafaeliaBootblock.ETHIC;
     }
@@ -112,6 +128,7 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock hash core identifier.
      */
     @NonNull
+    @ThreadSafe
     public static String getHashCore() {
         return RafaeliaBootblock.HASH_CORE;
     }
@@ -120,6 +137,7 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock vector core identifier.
      */
     @NonNull
+    @ThreadSafe
     public static String getVectorCore() {
         return RafaeliaBootblock.VECTOR_CORE;
     }
@@ -128,6 +146,7 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock universe identifier.
      */
     @NonNull
+    @ThreadSafe
     public static String getUniverse() {
         return RafaeliaBootblock.UNIVERSE;
     }
@@ -136,6 +155,7 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock seals as a defensive copy.
      */
     @NonNull
+    @ThreadSafe
     public static String[] getSeals() {
         return RafaeliaBootblock.getSeals();
     }
@@ -425,6 +445,7 @@ public final class RafaeliaCore {
      * @throws SecurityException if usage is not authorized
      */
     @NonNull
+    @ThreadSafe
     public static RafaeliaCore create(int sizeBytes) {
         if (!sValidated) {
             validateUsage();
@@ -448,10 +469,14 @@ public final class RafaeliaCore {
     
     /**
      * Gets the direct memory buffer for bare-metal operations.
+     *
+     * <p>Thread-safety: callers must ensure exclusive access when mutating the
+     * returned buffer.</p>
      * 
      * @return direct memory buffer
      */
     @NonNull
+    @NotThreadSafe
     public ByteBuffer getDirectMemory() {
         return mDirectMemory;
     }
@@ -460,7 +485,9 @@ public final class RafaeliaCore {
      * Performs cache-optimized memory copy.
      * Uses SIMD instructions when available.
      *
-     * Thread-safety: callers must ensure exclusive access to the buffers.
+     * <p>Thread-safety: callers must ensure exclusive access to the buffers and
+     * avoid overlapping source/destination ranges when the same buffer instance
+     * is supplied. Debug builds perform additional overlap checks.</p>
      * 
      * @param src source buffer
      * @param srcOffset source offset
@@ -468,6 +495,7 @@ public final class RafaeliaCore {
      * @param dstOffset destination offset
      * @param length number of bytes to copy
      */
+    @ThreadSafe
     public static void optimizedMemoryCopy(
             @NonNull ByteBuffer src, int srcOffset,
             @NonNull ByteBuffer dst, int dstOffset,
@@ -485,6 +513,7 @@ public final class RafaeliaCore {
         if (srcEnd > src.capacity() || dstEnd > dst.capacity()) {
             throw new IndexOutOfBoundsException("Copy would exceed buffer bounds");
         }
+        debugCheckExclusiveMemoryCopy(src, srcOffset, dst, dstOffset, length);
         if (length == 0) {
             return;
         }
@@ -522,12 +551,16 @@ public final class RafaeliaCore {
     
     /**
      * Performs bare-metal vector addition with SIMD acceleration.
+     *
+     * <p>Thread-safety: callers must ensure exclusive access to {@code result}
+     * and avoid concurrent mutation of inputs.</p>
      * 
      * @param a first vector
      * @param b second vector  
      * @param result result vector
      * @param length vector length (must be same for all)
      */
+    @ThreadSafe
     public static void vectorAdd(
             @NonNull float[] a,
             @NonNull float[] b,
@@ -551,12 +584,16 @@ public final class RafaeliaCore {
     
     /**
      * Performs bare-metal vector multiplication with SIMD acceleration.
+     *
+     * <p>Thread-safety: callers must ensure exclusive access to {@code result}
+     * and avoid concurrent mutation of inputs.</p>
      * 
      * @param a first vector
      * @param b second vector
      * @param result result vector
      * @param length vector length (must be same for all)
      */
+    @ThreadSafe
     public static void vectorMultiply(
             @NonNull float[] a,
             @NonNull float[] b,
@@ -580,6 +617,9 @@ public final class RafaeliaCore {
     /**
      * Performs cache-optimized matrix multiplication.
      * Uses blocking/tiling for cache efficiency.
+     *
+     * <p>Thread-safety: callers must ensure exclusive access to {@code result}
+     * and avoid concurrent mutation of inputs.</p>
      * 
      * @param a first matrix (row-major)
      * @param b second matrix (row-major)
@@ -588,6 +628,7 @@ public final class RafaeliaCore {
      * @param inner inner dimension (cols of a, rows of b)
      * @param cols number of cols in b and result
      */
+    @ThreadSafe
     public static void matrixMultiply(
             @NonNull float[] a,
             @NonNull float[] b,
@@ -647,6 +688,7 @@ public final class RafaeliaCore {
      * 
      * @param address memory address to prefetch
      */
+    @ThreadSafe
     public static void prefetch(long address) {
         // Use native prefetch if available
         if (sNativeAvailable && address != 0) {
@@ -659,8 +701,35 @@ public final class RafaeliaCore {
      * 
      * @return bit mask of available features
      */
+    @ThreadSafe
     public static int getCpuFeatures() {
         return sNativeAvailable ? nativeGetCpuFeatures() : 0;
+    }
+
+    private static void debugCheckExclusiveMemoryCopy(
+            @NonNull ByteBuffer src,
+            int srcOffset,
+            @NonNull ByteBuffer dst,
+            int dstOffset,
+            int length) {
+        if (!DEBUG) {
+            return;
+        }
+        if (dst.isReadOnly()) {
+            throw new IllegalArgumentException("Destination buffer is read-only");
+        }
+        if (length == 0 || src != dst) {
+            return;
+        }
+        long srcStart = srcOffset;
+        long srcEnd = (long) srcOffset + (long) length;
+        long dstStart = dstOffset;
+        long dstEnd = (long) dstOffset + (long) length;
+        boolean overlaps = srcStart < dstEnd && dstStart < srcEnd;
+        if (overlaps) {
+            throw new IllegalArgumentException(
+                    "Source and destination ranges overlap; exclusive access required");
+        }
     }
     
     /**
