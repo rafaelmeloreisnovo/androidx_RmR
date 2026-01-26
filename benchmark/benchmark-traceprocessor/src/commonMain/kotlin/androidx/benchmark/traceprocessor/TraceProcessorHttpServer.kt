@@ -83,6 +83,7 @@ internal class TraceProcessorHttpServer(
     /** Stops the server killing the associated process */
     fun stopServer() {
         serverLifecycleManager.stop()
+        hasStarted = false
     }
 
     /** Returns true whether the server is running, false otherwise. */
@@ -135,8 +136,8 @@ internal class TraceProcessorHttpServer(
      */
     fun parse(inputStream: InputStream): List<AppendTraceDataResult> {
         val responses = mutableListOf<AppendTraceDataResult>()
+        val buffer = ByteArray(PARSE_PAYLOAD_SIZE)
         while (true) {
-            val buffer = ByteArray(PARSE_PAYLOAD_SIZE)
             val read = inputStream.read(buffer)
             if (read <= 0) break
             responses.add(
