@@ -11,8 +11,10 @@ package androidx.rmr.rafaelia;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.Buffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -61,6 +63,7 @@ public final class RafaeliaCore {
     private static final String AUTHORIZED_USER = "Rafael Melo Reis";
     private static final boolean ENFORCE_RESTRICTIONS = true;
     private static volatile boolean sValidated = false;
+    private static volatile boolean sNativeAvailable = false;
     
     // Cache line size (64 bytes on most modern CPUs)
     private static final int CACHE_LINE_SIZE = 64;
@@ -157,6 +160,7 @@ public final class RafaeliaCore {
         try {
             System.loadLibrary("rafaelia-native");
             nativeInitialize();
+            sNativeAvailable = true;
         } catch (UnsatisfiedLinkError e) {
             // Native library not available, fall back to pure Java
             // (with reduced performance)
@@ -466,16 +470,29 @@ public final class RafaeliaCore {
             int length) {
         
         // Validation
-        if (srcOffset + length > src.capacity() || dstOffset + length > dst.capacity()) {
+        if (srcOffset < 0 || dstOffset < 0) {
+            throw new IndexOutOfBoundsException("Offsets must be non-negative");
+        }
+        if (length < 0) {
+            throw new IllegalArgumentException("Length must be non-negative");
+        }
+        long srcEnd = (long) srcOffset + (long) length;
+        long dstEnd = (long) dstOffset + (long) length;
+        if (srcEnd > src.capacity() || dstEnd > dst.capacity()) {
             throw new IndexOutOfBoundsException("Copy would exceed buffer bounds");
+        }
+        if (length == 0) {
+            return;
         }
         
         // Use native implementation if available
-        if (src.isDirect() && dst.isDirect()) {
-            long srcAddr = getDirectBufferAddress(src) + srcOffset;
-            long dstAddr = getDirectBufferAddress(dst) + dstOffset;
-            nativeMemoryCopy(srcAddr, dstAddr, length);
-            return;
+        if (sNativeAvailable && src.isDirect() && dst.isDirect()) {
+            long srcAddr = getDirectBufferAddress(src);
+            long dstAddr = getDirectBufferAddress(dst);
+            if (srcAddr != 0 && dstAddr != 0) {
+                nativeMemoryCopy(srcAddr + srcOffset, dstAddr + dstOffset, length);
+                return;
+            }
         }
         
         // Fallback to Java implementation
@@ -492,9 +509,17 @@ public final class RafaeliaCore {
      * @return native memory address
      */
     private static long getDirectBufferAddress(@NonNull ByteBuffer buffer) {
-        // This would use actual unsafe memory access in production
-        // For now, return 0 and let native code handle it
-        return 0;
+        if (!buffer.isDirect()) {
+            return 0;
+        }
+        try {
+            Field addressField = Buffer.class.getDeclaredField("address");
+            addressField.setAccessible(true);
+            long address = addressField.getLong(buffer);
+            return address > 0 ? address : 0;
+        } catch (ReflectiveOperationException | SecurityException e) {
+            return 0;
+        }
     }
     
     /**

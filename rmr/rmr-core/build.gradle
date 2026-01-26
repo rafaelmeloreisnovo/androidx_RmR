@@ -22,6 +22,9 @@ plugins {
 
 android {
     namespace "androidx.rmr.core"
+
+    def fastMathEnabled = project.findProperty("rmrFastMath")?.toString()?.toBoolean() ?: false
+    def mathFlag = fastMathEnabled ? "-ffast-math" : "-fno-fast-math"
     
     // Enable native code compilation
     externalNativeBuild {
@@ -32,6 +35,7 @@ android {
     }
     
     defaultConfig {
+        consumerProguardFiles "consumer-proguard-rules.pro"
         // Build for all major architectures
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
@@ -40,7 +44,7 @@ android {
         externalNativeBuild {
             cmake {
                 // Enable SIMD optimizations
-                cppFlags "-std=c++17 -O3 -ffast-math -funroll-loops"
+                cppFlags "-std=c++17 -O3 ${mathFlag} -funroll-loops"
                 
                 // Architecture-specific flags are in CMakeLists.txt
                 arguments "-DANDROID_STL=c++_shared"
@@ -53,7 +57,7 @@ android {
             // Enable additional optimizations for release builds
             externalNativeBuild {
                 cmake {
-                    cppFlags "-std=c++17 -O3 -ffast-math -funroll-loops -flto"
+                    cppFlags "-std=c++17 -O3 ${mathFlag} -funroll-loops -flto"
                 }
             }
         }
@@ -65,6 +69,7 @@ dependencies {
     implementation(libs.androidx.annotation)
     
     // Test dependencies
+    testImplementation(libs.junit)
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.testRunner)
 }
