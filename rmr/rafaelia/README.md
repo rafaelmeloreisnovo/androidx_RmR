@@ -54,6 +54,23 @@ The module implements:
 
 **See `LEGAL_NOTICE.md` for complete legal terms and penalty provisions.**
 
+### License Record Format
+Runtime authorization accepts a structured license record with key/value pairs:
+
+```
+product=RAFAELIA_CORE
+authorized_user=Rafael Melo Reis
+license_id=<unique-id>
+issued_at=2026-01-01T00:00:00Z
+expires_at=2027-01-01T00:00:00Z
+signature_sha256=<sha256-of-canonical-payload>
+```
+
+The `signature_sha256` is optional and, when present, must be the SHA-256 hash of
+the canonical payload (all key/value pairs excluding `signature_sha256`, sorted
+by key and joined with newlines). `expires_at` is optional; if provided it must
+be in the future. Records use ISO-8601 timestamps for `issued_at` and `expires_at`.
+
 ## Architecture
 
 ### Native Layer (C++20)
