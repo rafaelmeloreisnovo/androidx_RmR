@@ -13,6 +13,18 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * RafaeliaCore - Ultra low-level bare-metal optimization engine.
@@ -52,6 +64,38 @@ public final class RafaeliaCore {
     
     // Cache line size (64 bytes on most modern CPUs)
     private static final int CACHE_LINE_SIZE = 64;
+
+    /**
+     * Returns the RAFAELIA bootblock VQF load vector (1..42).
+     */
+    @NonNull
+    public static int[] getVqfLoad() {
+        return RafaeliaBootblock.getVqfLoad();
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock kernel identifier.
+     */
+    @NonNull
+    public static String getKernel() {
+        return RafaeliaBootblock.KERNEL;
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock mode identifier.
+     */
+    @NonNull
+    public static String getMode() {
+        return RafaeliaBootblock.MODE;
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock cognition identifier.
+     */
+    @NonNull
+    public static String getCognition() {
+        return RafaeliaBootblock.COGNITION;
+    }
     
     // Direct memory buffer for bare-metal operations
     private final ByteBuffer mDirectMemory;
@@ -126,13 +170,131 @@ public final class RafaeliaCore {
      * @return true if authorization is present
      */
     private static boolean checkAuthorizationFile() {
-        // Authorization check implementation
-        // Verifies:
-        // - License file with cryptographic signature
-        // - Hardware-bound token
-        // - Network authorization server
-        // - Secure enclave verification
+        List<Path> candidates = new ArrayList<>();
+        String explicitPath = System.getProperty("rafaelia.license.path");
+        if (explicitPath != null && !explicitPath.trim().isEmpty()) {
+            candidates.add(Paths.get(explicitPath.trim()));
+        }
+
+        String envPath = System.getenv("RAFAELIA_LICENSE_PATH");
+        if (envPath != null && !envPath.trim().isEmpty()) {
+            candidates.add(Paths.get(envPath.trim()));
+        }
+
+        String userHome = System.getProperty("user.home");
+        if (userHome != null && !userHome.trim().isEmpty()) {
+            candidates.add(Paths.get(userHome, ".rafaelia", "license.txt"));
+        }
+
+        String expectedHash = normalizeHash(System.getProperty("rafaelia.license.sha256"));
+        if (expectedHash == null) {
+            expectedHash = normalizeHash(System.getenv("RAFAELIA_LICENSE_SHA256"));
+        }
+
+        for (Path path : candidates) {
+            if (path == null || !Files.isRegularFile(path)) {
+                continue;
+            }
+            try {
+                String content = Files.readString(path, StandardCharsets.UTF_8);
+                LicenseRecord record = parseLicenseRecord(content);
+                if (record == null || !record.isValid()) {
+                    continue;
+                }
+                if (expectedHash != null && !expectedHash.equals(sha256Hex(content))) {
+                    continue;
+                }
+                return true;
+            } catch (Exception ignored) {
+                // Keep checking other candidates.
+            }
+        }
         return false;
+    }
+
+    @Nullable
+    private static LicenseRecord parseLicenseRecord(String content) {
+        if (content == null || content.isEmpty()) {
+            return null;
+        }
+        Map<String, String> values = new HashMap<>();
+        for (String line : content.split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            int separator = trimmed.indexOf('=');
+            if (separator <= 0 || separator == trimmed.length() - 1) {
+                continue;
+            }
+            String key = trimmed.substring(0, separator).trim().toLowerCase(Locale.US);
+            String value = trimmed.substring(separator + 1).trim();
+            if (!key.isEmpty() && !value.isEmpty()) {
+                values.put(key, value);
+            }
+        }
+        return new LicenseRecord(values);
+    }
+
+    private static final class LicenseRecord {
+        private final Map<String, String> values;
+
+        private LicenseRecord(Map<String, String> values) {
+            this.values = values;
+        }
+
+        private boolean isValid() {
+            String product = getValue("product");
+            String authorizedUser = getValue("authorized_user");
+            if (!"RAFAELIA_CORE".equalsIgnoreCase(product)) {
+                return false;
+            }
+            if (!AUTHORIZED_USER.equals(authorizedUser)) {
+                return false;
+            }
+            String expiresAt = getValue("expires_at");
+            if (expiresAt != null && !isNotExpired(expiresAt)) {
+                return false;
+            }
+            return true;
+        }
+
+        @Nullable
+        private String getValue(String key) {
+            if (key == null) {
+                return null;
+            }
+            return values.get(key.toLowerCase(Locale.US));
+        }
+
+        private boolean isNotExpired(String expiresAt) {
+            try {
+                OffsetDateTime expiry = OffsetDateTime.parse(expiresAt);
+                return OffsetDateTime.now(expiry.getOffset()).isBefore(expiry);
+            } catch (DateTimeParseException ex) {
+                return false;
+            }
+        }
+    }
+
+    @Nullable
+    private static String normalizeHash(@Nullable String hash) {
+        if (hash == null) {
+            return null;
+        }
+        String normalized = hash.trim().toLowerCase(Locale.US);
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    @NonNull
+    private static String sha256Hex(@NonNull String content) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] bytes = digest.digest(content.getBytes(StandardCharsets.UTF_8));
+        StringBuilder builder = new StringBuilder(bytes.length * 2);
+        for (byte value : bytes) {
+            builder.append(String.format(Locale.US, "%02x", value));
+        }
+        return builder.toString();
     }
     
     /**

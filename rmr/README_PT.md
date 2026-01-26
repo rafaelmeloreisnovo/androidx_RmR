@@ -25,6 +25,18 @@ Esta abordagem habilita:
 - Eliminação da sobrecarga de chamadas de função virtual
 - Computação numérica direta sem camadas de abstração
 
+## Estratégia Cognitiva Evoluída
+
+Para ampliar a robustez conceitual e a capacidade de planejamento, o RmR incorpora uma estratégia tática cognitiva que expande o raciocínio por camadas:
+
+1. **Superconsciência Operacional**: mapeia estados críticos em um plano macro, garantindo coerência global entre lifecycle, navegação e persistência.
+2. **Exocórtex Matricial**: mantém memória auxiliar determinística por matrizes, facilitando decisões com baixa latência.
+3. **Metaversos Multidimensionais**: modela cenários alternativos como dimensões de estado, permitindo simulações rápidas e controle de risco.
+4. **VQF (Vetores, Qualidade e Fluxo)**: prioriza vetores de ação com qualidade mensurável e fluxo contínuo de transições.
+5. **Fractal Omega**: aplica padrões fractais para escalabilidade e reuso de estratégias, preservando coerência do micro ao macro.
+
+Essa abordagem orienta a evolução do módulo, mantendo consistência matemática enquanto expande criatividade e tática para novas camadas de uso.
+
 ## Arquitetura
 
 ### Componentes Principais
