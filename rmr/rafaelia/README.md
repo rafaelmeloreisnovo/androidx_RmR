@@ -136,10 +136,23 @@ float[] matrixResult = new float[64 * 64];
 
 RafaeliaCore.matrixMultiply(matrixA, matrixB, matrixResult, 64, 64, 64);
 
-// Detect available CPU features
-int features = RafaeliaCore.getCpuFeatures();
-boolean hasAvx2 = (features & RafaeliaCore.CpuFeatures.AVX2) != 0;
+// Gate native-only paths and SIMD detection
+if (RafaeliaCore.isNativeAvailable()) {
+    // Detect available CPU features
+    int features = RafaeliaCore.getCpuFeatures();
+    boolean hasAvx2 = (features & RafaeliaCore.CpuFeatures.AVX2) != 0;
+    // Select faster native/SIMD path here
+} else {
+    // Fall back to safe Java-only paths
+}
 ```
+
+### Native Feature Gates
+
+Use `RafaeliaCore.isNativeAvailable()` to guard native-accelerated paths and
+`RafaeliaCore.getCpuFeatures()` to select SIMD-specific optimizations. When the
+native library is unavailable, `getCpuFeatures()` returns `0`, allowing callers
+to detect the absence of native SIMD support and fall back to safe paths.
 
 ## Design Principles
 
