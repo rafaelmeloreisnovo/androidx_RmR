@@ -18,8 +18,10 @@ package androidx.rmr.room;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import androidx.rmr.core.RmRMatrix;
 
+@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public final class RmRQueryCache {
     private static final int DEFAULT_CAPACITY = 64;
 
