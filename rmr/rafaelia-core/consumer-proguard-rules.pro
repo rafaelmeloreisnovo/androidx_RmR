@@ -1,0 +1,1 @@
+# Rafaelia Core consumer rules
