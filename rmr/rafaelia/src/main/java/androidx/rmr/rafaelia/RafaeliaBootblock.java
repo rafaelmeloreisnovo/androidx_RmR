@@ -43,6 +43,14 @@ public final class RafaeliaBootblock {
         "∞脈圖"
     };
 
+    /**
+     * Returns a defensive copy of the seal list.
+     */
+    @NonNull
+    public static String[] getSeals() {
+        return SEALS.clone();
+    }
+
     private RafaeliaBootblock() {
         // Utility class.
     }

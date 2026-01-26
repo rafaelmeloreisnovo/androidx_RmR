@@ -96,6 +96,46 @@ public final class RafaeliaCore {
     public static String getCognition() {
         return RafaeliaBootblock.COGNITION;
     }
+
+    /**
+     * Returns the RAFAELIA bootblock ethic identifier.
+     */
+    @NonNull
+    public static String getEthic() {
+        return RafaeliaBootblock.ETHIC;
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock hash core identifier.
+     */
+    @NonNull
+    public static String getHashCore() {
+        return RafaeliaBootblock.HASH_CORE;
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock vector core identifier.
+     */
+    @NonNull
+    public static String getVectorCore() {
+        return RafaeliaBootblock.VECTOR_CORE;
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock universe identifier.
+     */
+    @NonNull
+    public static String getUniverse() {
+        return RafaeliaBootblock.UNIVERSE;
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock seals as a defensive copy.
+     */
+    @NonNull
+    public static String[] getSeals() {
+        return RafaeliaBootblock.getSeals();
+    }
     
     // Direct memory buffer for bare-metal operations
     private final ByteBuffer mDirectMemory;
@@ -246,14 +286,26 @@ public final class RafaeliaCore {
         private boolean isValid() {
             String product = getValue("product");
             String authorizedUser = getValue("authorized_user");
+            String licenseId = getValue("license_id");
+            String issuedAt = getValue("issued_at");
             if (!"RAFAELIA_CORE".equalsIgnoreCase(product)) {
                 return false;
             }
             if (!AUTHORIZED_USER.equals(authorizedUser)) {
                 return false;
             }
+            if (licenseId == null || licenseId.isEmpty()) {
+                return false;
+            }
+            if (issuedAt == null || !isIssuedAtValid(issuedAt)) {
+                return false;
+            }
             String expiresAt = getValue("expires_at");
             if (expiresAt != null && !isNotExpired(expiresAt)) {
+                return false;
+            }
+            String signature = getValue("signature_sha256");
+            if (signature != null && !signature.equalsIgnoreCase(signaturePayload())) {
                 return false;
             }
             return true;
@@ -273,6 +325,37 @@ public final class RafaeliaCore {
                 return OffsetDateTime.now(expiry.getOffset()).isBefore(expiry);
             } catch (DateTimeParseException ex) {
                 return false;
+            }
+        }
+
+        private boolean isIssuedAtValid(String issuedAt) {
+            try {
+                OffsetDateTime issued = OffsetDateTime.parse(issuedAt);
+                return !OffsetDateTime.now(issued.getOffset()).isBefore(issued);
+            } catch (DateTimeParseException ex) {
+                return false;
+            }
+        }
+
+        private String signaturePayload() {
+            List<String> keys = new ArrayList<>(values.keySet());
+            keys.remove("signature_sha256");
+            keys.sort(String::compareTo);
+            StringBuilder payload = new StringBuilder();
+            for (String key : keys) {
+                String value = values.get(key);
+                if (value == null) {
+                    continue;
+                }
+                if (payload.length() > 0) {
+                    payload.append('\n');
+                }
+                payload.append(key).append('=').append(value);
+            }
+            try {
+                return sha256Hex(payload.toString());
+            } catch (Exception ex) {
+                return "";
             }
         }
     }
