@@ -52,6 +52,38 @@ public final class RafaeliaCore {
     
     // Cache line size (64 bytes on most modern CPUs)
     private static final int CACHE_LINE_SIZE = 64;
+
+    /**
+     * Returns the RAFAELIA bootblock VQF load vector (1..42).
+     */
+    @NonNull
+    public static int[] getVqfLoad() {
+        return RafaeliaBootblock.getVqfLoad();
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock kernel identifier.
+     */
+    @NonNull
+    public static String getKernel() {
+        return RafaeliaBootblock.KERNEL;
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock mode identifier.
+     */
+    @NonNull
+    public static String getMode() {
+        return RafaeliaBootblock.MODE;
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock cognition identifier.
+     */
+    @NonNull
+    public static String getCognition() {
+        return RafaeliaBootblock.COGNITION;
+    }
     
     // Direct memory buffer for bare-metal operations
     private final ByteBuffer mDirectMemory;
