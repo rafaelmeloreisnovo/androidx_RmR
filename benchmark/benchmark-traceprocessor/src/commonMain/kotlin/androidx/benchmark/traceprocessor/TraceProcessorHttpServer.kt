@@ -82,7 +82,11 @@ internal class TraceProcessorHttpServer(
 
     /** Stops the server killing the associated process */
     fun stopServer() {
-        serverLifecycleManager.stop()
+        try {
+            serverLifecycleManager.stop()
+        } finally {
+            hasStarted = false
+        }
     }
 
     /** Returns true whether the server is running, false otherwise. */
@@ -135,8 +139,8 @@ internal class TraceProcessorHttpServer(
      */
     fun parse(inputStream: InputStream): List<AppendTraceDataResult> {
         val responses = mutableListOf<AppendTraceDataResult>()
+        val buffer = ByteArray(PARSE_PAYLOAD_SIZE)
         while (true) {
-            val buffer = ByteArray(PARSE_PAYLOAD_SIZE)
             val read = inputStream.read(buffer)
             if (read <= 0) break
             responses.add(
@@ -185,18 +189,20 @@ internal class TraceProcessorHttpServer(
         encodeBlock: ((OutputStream) -> Unit)?,
         decodeBlock: ((InputStream) -> T),
     ): T {
-        with(URL("$HTTP_ADDRESS:${port}$url").openConnection() as HttpURLConnection) {
-            requestMethod = method
-            readTimeout = timeoutMs.toInt()
-            setRequestProperty("Content-Type", contentType)
+        val connection = URL("$HTTP_ADDRESS:${port}$url").openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = method
+            connection.readTimeout = timeoutMs.toInt()
+            connection.setRequestProperty("Content-Type", contentType)
             if (encodeBlock != null) {
-                doOutput = true
-                encodeBlock(outputStream)
-                outputStream.close()
+                connection.doOutput = true
+                connection.outputStream.use { outputStream ->
+                    encodeBlock(outputStream)
+                }
             }
 
-            if (responseCode != 200) {
-                val exceptionMessage = "${responseCode}:${responseMessage}."
+            if (connection.responseCode != 200) {
+                val exceptionMessage = "${connection.responseCode}:${connection.responseMessage}."
                 if (usingProxy()) {
                     throw IllegalStateException(
                         "$exceptionMessage " +
@@ -210,7 +216,11 @@ internal class TraceProcessorHttpServer(
                 throw IllegalStateException(exceptionMessage)
             }
 
-            return decodeBlock(inputStream)
+            return connection.inputStream.use { inputStream ->
+                decodeBlock(inputStream)
+            }
+        } finally {
+            connection.disconnect()
         }
     }
 }
