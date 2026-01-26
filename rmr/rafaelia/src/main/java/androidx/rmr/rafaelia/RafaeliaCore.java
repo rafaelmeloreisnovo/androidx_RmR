@@ -18,9 +18,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * RafaeliaCore - Ultra low-level bare-metal optimization engine.
@@ -193,7 +197,8 @@ public final class RafaeliaCore {
             }
             try {
                 String content = Files.readString(path, StandardCharsets.UTF_8);
-                if (!containsAuthorizationMarkers(content)) {
+                LicenseRecord record = parseLicenseRecord(content);
+                if (record == null || !record.isValid()) {
                     continue;
                 }
                 if (expectedHash != null && !expectedHash.equals(sha256Hex(content))) {
@@ -207,14 +212,69 @@ public final class RafaeliaCore {
         return false;
     }
 
-    private static boolean containsAuthorizationMarkers(String content) {
+    @Nullable
+    private static LicenseRecord parseLicenseRecord(String content) {
         if (content == null || content.isEmpty()) {
-            return false;
+            return null;
         }
-        String normalized = content.toLowerCase(Locale.US);
-        return normalized.contains("rafaelia_core")
-                && (normalized.contains("authorized_user=" + AUTHORIZED_USER.toLowerCase(Locale.US))
-                || normalized.contains(AUTHORIZED_USER.toLowerCase(Locale.US)));
+        Map<String, String> values = new HashMap<>();
+        for (String line : content.split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            int separator = trimmed.indexOf('=');
+            if (separator <= 0 || separator == trimmed.length() - 1) {
+                continue;
+            }
+            String key = trimmed.substring(0, separator).trim().toLowerCase(Locale.US);
+            String value = trimmed.substring(separator + 1).trim();
+            if (!key.isEmpty() && !value.isEmpty()) {
+                values.put(key, value);
+            }
+        }
+        return new LicenseRecord(values);
+    }
+
+    private static final class LicenseRecord {
+        private final Map<String, String> values;
+
+        private LicenseRecord(Map<String, String> values) {
+            this.values = values;
+        }
+
+        private boolean isValid() {
+            String product = getValue("product");
+            String authorizedUser = getValue("authorized_user");
+            if (!"RAFAELIA_CORE".equalsIgnoreCase(product)) {
+                return false;
+            }
+            if (!AUTHORIZED_USER.equals(authorizedUser)) {
+                return false;
+            }
+            String expiresAt = getValue("expires_at");
+            if (expiresAt != null && !isNotExpired(expiresAt)) {
+                return false;
+            }
+            return true;
+        }
+
+        @Nullable
+        private String getValue(String key) {
+            if (key == null) {
+                return null;
+            }
+            return values.get(key.toLowerCase(Locale.US));
+        }
+
+        private boolean isNotExpired(String expiresAt) {
+            try {
+                OffsetDateTime expiry = OffsetDateTime.parse(expiresAt);
+                return OffsetDateTime.now(expiry.getOffset()).isBefore(expiry);
+            } catch (DateTimeParseException ex) {
+                return false;
+            }
+        }
     }
 
     @Nullable
