@@ -18,6 +18,7 @@ package androidx.rmr.rafaelia;
 
 import static org.junit.Assert.assertEquals;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import org.junit.Test;
 
@@ -49,5 +50,30 @@ public class RafaeliaCoreTest {
         RafaeliaCore.optimizedMemoryCopy(src, 0, dst, 0, 0);
 
         assertEquals(0, dst.get(0));
+    }
+
+    @Test
+    public void optimizedMemoryCopySkipsNativeWhenUnavailable() throws Exception {
+        Field nativeAvailableField = RafaeliaCore.class.getDeclaredField("sNativeAvailable");
+        nativeAvailableField.setAccessible(true);
+        boolean originalNativeAvailable = (boolean) nativeAvailableField.get(null);
+        nativeAvailableField.set(null, false);
+        try {
+            ByteBuffer src = ByteBuffer.allocateDirect(4);
+            ByteBuffer dst = ByteBuffer.allocateDirect(4);
+            src.put(0, (byte) 7);
+            src.put(1, (byte) 8);
+            src.put(2, (byte) 9);
+            src.put(3, (byte) 10);
+
+            RafaeliaCore.optimizedMemoryCopy(src, 0, dst, 0, 4);
+
+            assertEquals(7, dst.get(0));
+            assertEquals(8, dst.get(1));
+            assertEquals(9, dst.get(2));
+            assertEquals(10, dst.get(3));
+        } finally {
+            nativeAvailableField.set(null, originalNativeAvailable);
+        }
     }
 }
