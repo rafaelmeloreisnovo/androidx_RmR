@@ -1342,6 +1342,7 @@ includeProject(":rmr:rmr-navigation", [BuildType.MAIN, BuildType.FLAN])
 includeProject(":rmr:rmr-preference", [BuildType.MAIN])
 includeProject(":rmr:rmr-room", [BuildType.MAIN])
 includeProject(":rmr:rafaelia", [BuildType.MAIN])
+includeProject(":rmr:rafaelia-core", [BuildType.MAIN])
 
 // Add includedBuild for b/203825166
 includeBuild("placeholder")
