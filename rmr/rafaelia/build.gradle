@@ -27,6 +27,9 @@ plugins {
 
 android {
     namespace "androidx.rmr.rafaelia"
+
+    def fastMathEnabled = project.findProperty("rmrFastMath")?.toString()?.toBoolean() ?: false
+    def mathFlag = fastMathEnabled ? "-ffast-math" : "-fno-fast-math"
     
     // Enable native code compilation for bare-metal performance
     externalNativeBuild {
@@ -37,6 +40,7 @@ android {
     }
     
     defaultConfig {
+        consumerProguardFiles "consumer-proguard-rules.pro"
         // Build for all major architectures with maximum optimization
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
@@ -45,7 +49,7 @@ android {
         externalNativeBuild {
             cmake {
                 // Maximum bare-metal optimization flags
-                cppFlags "-std=c++20 -O3 -ffast-math -funroll-loops -march=native -mtune=native -fno-rtti -fno-exceptions"
+                cppFlags "-std=c++20 -O3 ${mathFlag} -funroll-loops -march=native -mtune=native -fno-rtti -fno-exceptions"
                 
                 arguments "-DANDROID_STL=c++_shared",
                           "-DANDROID_TOOLCHAIN=clang",
@@ -63,7 +67,7 @@ android {
             // Maximum optimization for release builds
             externalNativeBuild {
                 cmake {
-                    cppFlags "-std=c++20 -O3 -ffast-math -funroll-loops -march=native -mtune=native -flto -fno-rtti -fno-exceptions"
+                    cppFlags "-std=c++20 -O3 ${mathFlag} -funroll-loops -march=native -mtune=native -flto -fno-rtti -fno-exceptions"
                 }
             }
             minifyEnabled false
@@ -76,6 +80,7 @@ dependencies {
     implementation(libs.androidx.annotation)
     
     // Test dependencies only
+    testImplementation(libs.junit)
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.testRunner)
 }
