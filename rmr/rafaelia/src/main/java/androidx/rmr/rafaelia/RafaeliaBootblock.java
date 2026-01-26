@@ -11,6 +11,7 @@ package androidx.rmr.rafaelia;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
+import androidx.annotation.ThreadSafe;
 
 /**
  * RafaeliaBootblock - canonical boot configuration for RAFAELIA mode.
@@ -19,6 +20,7 @@ import androidx.annotation.RestrictTo;
  * deterministic cognition states within the Rafaelia Core.
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+@ThreadSafe
 public final class RafaeliaBootblock {
 
     private static final int[] VQF_LOAD = buildVqfLoad();
