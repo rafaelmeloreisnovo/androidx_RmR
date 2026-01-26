@@ -13,6 +13,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * RafaeliaCore - Ultra low-level bare-metal optimization engine.
@@ -52,6 +60,38 @@ public final class RafaeliaCore {
     
     // Cache line size (64 bytes on most modern CPUs)
     private static final int CACHE_LINE_SIZE = 64;
+
+    /**
+     * Returns the RAFAELIA bootblock VQF load vector (1..42).
+     */
+    @NonNull
+    public static int[] getVqfLoad() {
+        return RafaeliaBootblock.getVqfLoad();
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock kernel identifier.
+     */
+    @NonNull
+    public static String getKernel() {
+        return RafaeliaBootblock.KERNEL;
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock mode identifier.
+     */
+    @NonNull
+    public static String getMode() {
+        return RafaeliaBootblock.MODE;
+    }
+
+    /**
+     * Returns the RAFAELIA bootblock cognition identifier.
+     */
+    @NonNull
+    public static String getCognition() {
+        return RafaeliaBootblock.COGNITION;
+    }
     
     // Direct memory buffer for bare-metal operations
     private final ByteBuffer mDirectMemory;
@@ -126,13 +166,75 @@ public final class RafaeliaCore {
      * @return true if authorization is present
      */
     private static boolean checkAuthorizationFile() {
-        // Authorization check implementation
-        // Verifies:
-        // - License file with cryptographic signature
-        // - Hardware-bound token
-        // - Network authorization server
-        // - Secure enclave verification
+        List<Path> candidates = new ArrayList<>();
+        String explicitPath = System.getProperty("rafaelia.license.path");
+        if (explicitPath != null && !explicitPath.trim().isEmpty()) {
+            candidates.add(Paths.get(explicitPath.trim()));
+        }
+
+        String envPath = System.getenv("RAFAELIA_LICENSE_PATH");
+        if (envPath != null && !envPath.trim().isEmpty()) {
+            candidates.add(Paths.get(envPath.trim()));
+        }
+
+        String userHome = System.getProperty("user.home");
+        if (userHome != null && !userHome.trim().isEmpty()) {
+            candidates.add(Paths.get(userHome, ".rafaelia", "license.txt"));
+        }
+
+        String expectedHash = normalizeHash(System.getProperty("rafaelia.license.sha256"));
+        if (expectedHash == null) {
+            expectedHash = normalizeHash(System.getenv("RAFAELIA_LICENSE_SHA256"));
+        }
+
+        for (Path path : candidates) {
+            if (path == null || !Files.isRegularFile(path)) {
+                continue;
+            }
+            try {
+                String content = Files.readString(path, StandardCharsets.UTF_8);
+                if (!containsAuthorizationMarkers(content)) {
+                    continue;
+                }
+                if (expectedHash != null && !expectedHash.equals(sha256Hex(content))) {
+                    continue;
+                }
+                return true;
+            } catch (Exception ignored) {
+                // Keep checking other candidates.
+            }
+        }
         return false;
+    }
+
+    private static boolean containsAuthorizationMarkers(String content) {
+        if (content == null || content.isEmpty()) {
+            return false;
+        }
+        String normalized = content.toLowerCase(Locale.US);
+        return normalized.contains("rafaelia_core")
+                && (normalized.contains("authorized_user=" + AUTHORIZED_USER.toLowerCase(Locale.US))
+                || normalized.contains(AUTHORIZED_USER.toLowerCase(Locale.US)));
+    }
+
+    @Nullable
+    private static String normalizeHash(@Nullable String hash) {
+        if (hash == null) {
+            return null;
+        }
+        String normalized = hash.trim().toLowerCase(Locale.US);
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    @NonNull
+    private static String sha256Hex(@NonNull String content) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] bytes = digest.digest(content.getBytes(StandardCharsets.UTF_8));
+        StringBuilder builder = new StringBuilder(bytes.length * 2);
+        for (byte value : bytes) {
+            builder.append(String.format(Locale.US, "%02x", value));
+        }
+        return builder.toString();
     }
     
     /**
