@@ -240,8 +240,8 @@ JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMatrixMultiply(
         JNIEnv* env, jclass clazz, 
         jlong a, jlong b, jlong result, 
-        jint rows, jint cols) {
-    if (rows <= 0 || cols <= 0 || a == 0 || b == 0 || result == 0) {
+        jint rows, jint inner, jint cols) {
+    if (rows <= 0 || inner <= 0 || cols <= 0 || a == 0 || b == 0 || result == 0) {
         return;
     }
     const float* aPtr = reinterpret_cast<const float*>(a);
@@ -249,12 +249,27 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMatrixMultiply(
     float* resultPtr = reinterpret_cast<float*>(result);
 
     size_t rowsSize = static_cast<size_t>(rows);
+    size_t innerSize = static_cast<size_t>(inner);
     size_t colsSize = static_cast<size_t>(cols);
     if (rowsSize > std::numeric_limits<size_t>::max() / colsSize) {
         return;
     }
+    if (rowsSize > std::numeric_limits<size_t>::max() / innerSize) {
+        return;
+    }
+    if (innerSize > std::numeric_limits<size_t>::max() / colsSize) {
+        return;
+    }
     size_t elementCount = rowsSize * colsSize;
     if (elementCount > std::numeric_limits<size_t>::max() / sizeof(float)) {
+        return;
+    }
+    size_t aElementCount = rowsSize * innerSize;
+    if (aElementCount > std::numeric_limits<size_t>::max() / sizeof(float)) {
+        return;
+    }
+    size_t bElementCount = innerSize * colsSize;
+    if (bElementCount > std::numeric_limits<size_t>::max() / sizeof(float)) {
         return;
     }
     
@@ -268,14 +283,15 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMatrixMultiply(
     // Blocked matrix multiplication
     for (int ii = 0; ii < rows; ii += BLOCK_SIZE) {
         for (int jj = 0; jj < cols; jj += BLOCK_SIZE) {
-            for (int kk = 0; kk < cols; kk += BLOCK_SIZE) {
+            for (int kk = 0; kk < inner; kk += BLOCK_SIZE) {
                 int iMax = (ii + BLOCK_SIZE < rows) ? ii + BLOCK_SIZE : rows;
                 int jMax = (jj + BLOCK_SIZE < cols) ? jj + BLOCK_SIZE : cols;
-                int kMax = (kk + BLOCK_SIZE < cols) ? kk + BLOCK_SIZE : cols;
+                int kMax = (kk + BLOCK_SIZE < inner) ? kk + BLOCK_SIZE : inner;
                 
                 for (int i = ii; i < iMax; i++) {
                     for (int k = kk; k < kMax; k++) {
-                        size_t aIndex = static_cast<size_t>(i) * colsSize + static_cast<size_t>(k);
+                        size_t aIndex =
+                                static_cast<size_t>(i) * innerSize + static_cast<size_t>(k);
                         float aik = aPtr[aIndex];
                         for (int j = jj; j < jMax; j++) {
                             size_t resultIndex =
