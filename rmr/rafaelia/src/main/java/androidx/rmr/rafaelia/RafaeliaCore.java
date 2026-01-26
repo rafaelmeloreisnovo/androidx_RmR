@@ -695,11 +695,22 @@ public final class RafaeliaCore {
             nativePrefetch(address, 0); // hint 0 = temporal locality
         }
     }
+
+    /**
+     * Reports whether the native Rafaelia runtime is available.
+     *
+     * <p>Use this gate to decide between native-accelerated paths and
+     * pure-Java fallbacks.
+     */
+    @ThreadSafe
+    public static boolean isNativeAvailable() {
+        return sNativeAvailable;
+    }
     
     /**
      * Detects available CPU features for optimization.
      * 
-     * @return bit mask of available features
+     * @return bit mask of available features, or {@code 0} if native is unavailable
      */
     @ThreadSafe
     public static int getCpuFeatures() {
