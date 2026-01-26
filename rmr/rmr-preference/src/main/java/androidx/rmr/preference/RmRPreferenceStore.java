@@ -22,11 +22,12 @@ import androidx.rmr.core.RmRUtils;
 public final class RmRPreferenceStore {
     private static final int DEFAULT_CAPACITY = 256;
 
-    private final String[] keys;
-    private final double[] values;
-    private final int capacity;
-    private final int capacityMask;
-    private final boolean powerOfTwo;
+    private String[] keys;
+    private double[] values;
+    private int capacity;
+    private int capacityMask;
+    private boolean powerOfTwo;
+    private int size;
     private String lastKey;
     private int lastIndex = -1;
 
@@ -38,15 +39,15 @@ public final class RmRPreferenceStore {
         if (capacity <= 0) {
             throw new IllegalArgumentException("Capacity must be positive.");
         }
-        this.capacity = capacity;
-        this.powerOfTwo = (capacity & (capacity - 1)) == 0;
-        this.capacityMask = powerOfTwo ? capacity - 1 : 0;
-        this.keys = new String[capacity];
-        this.values = new double[capacity];
+        init(capacity);
     }
 
     public void putDouble(@NonNull String key, double value) {
+        ensureCapacityForInsert();
         int index = findSlot(key, true);
+        if (keys[index] == null) {
+            size++;
+        }
         keys[index] = key;
         values[index] = value;
         lastKey = key;
@@ -93,5 +94,39 @@ public final class RmRPreferenceStore {
             throw new IllegalStateException("Preference store is full.");
         }
         return -1;
+    }
+
+    private void ensureCapacityForInsert() {
+        int threshold = (int) (capacity * 0.7f);
+        if (size + 1 <= threshold) {
+            return;
+        }
+        resize(capacity * 2);
+    }
+
+    private void resize(int newCapacity) {
+        String[] oldKeys = keys;
+        double[] oldValues = values;
+        init(newCapacity);
+        for (int i = 0; i < oldKeys.length; i++) {
+            String key = oldKeys[i];
+            if (key != null) {
+                int index = findSlot(key, true);
+                keys[index] = key;
+                values[index] = oldValues[i];
+                size++;
+            }
+        }
+        lastKey = null;
+        lastIndex = -1;
+    }
+
+    private void init(int newCapacity) {
+        capacity = newCapacity;
+        powerOfTwo = (capacity & (capacity - 1)) == 0;
+        capacityMask = powerOfTwo ? capacity - 1 : 0;
+        keys = new String[capacity];
+        values = new double[capacity];
+        size = 0;
     }
 }
