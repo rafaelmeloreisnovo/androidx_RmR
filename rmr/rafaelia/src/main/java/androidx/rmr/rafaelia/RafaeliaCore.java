@@ -151,7 +151,8 @@ public final class RafaeliaCore {
     private static native void nativeMemorySet(long address, byte value, int size);
     private static native void nativeVectorAdd(long a, long b, long result, int length);
     private static native void nativeVectorMultiply(long a, long b, long result, int length);
-    private static native void nativeMatrixMultiply(long a, long b, long result, int rows, int cols);
+    private static native void nativeMatrixMultiply(long a, long b, long result, int rows, int inner,
+            int cols);
     private static native int nativeGetCpuFeatures();
     private static native void nativePrefetch(long address, int hint);
     private static native long nativeGetDirectBufferAddress(@NonNull ByteBuffer buffer);
