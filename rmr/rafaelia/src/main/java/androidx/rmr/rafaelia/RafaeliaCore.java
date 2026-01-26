@@ -597,17 +597,24 @@ public final class RafaeliaCore {
         if (rows < 0 || inner < 0 || cols < 0) {
             throw new IllegalArgumentException("Matrix dimensions must be non-negative");
         }
-        if (a.length < rows * inner || 
-            b.length < inner * cols || 
-            result.length < rows * cols) {
+        long aSize = (long) rows * (long) inner;
+        long bSize = (long) inner * (long) cols;
+        long resultSize = (long) rows * (long) cols;
+        if (aSize > a.length ||
+            bSize > b.length ||
+            resultSize > result.length) {
             throw new IllegalArgumentException("Array sizes don't match matrix dimensions");
+        }
+        if (resultSize > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Matrix result too large");
         }
         
         // Block size for cache optimization (tune for L1 cache)
         final int BLOCK_SIZE = 64;
         
         // Initialize result to zero
-        for (int i = 0; i < rows * cols; i++) {
+        int resultLength = (int) resultSize;
+        for (int i = 0; i < resultLength; i++) {
             result[i] = 0.0f;
         }
         
