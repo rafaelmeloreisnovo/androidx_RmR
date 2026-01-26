@@ -101,12 +101,18 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemoryCopy(
     if (size <= 0 || src == 0 || dst == 0) {
         return;
     }
+    const size_t sizeBytes = static_cast<size_t>(size);
+    constexpr size_t kMaxCopyBytes = 256u * 1024u * 1024u;
+    if (sizeBytes > std::numeric_limits<size_t>::max() ||
+        sizeBytes > kMaxCopyBytes) {
+        return;
+    }
     const void* srcPtr = reinterpret_cast<const void*>(src);
     void* dstPtr = reinterpret_cast<void*>(dst);
     
     // Use standard memcpy - it's already highly optimized
     // on modern platforms with SIMD instructions
-    memcpy(dstPtr, srcPtr, size);
+    memcpy(dstPtr, srcPtr, sizeBytes);
 }
 
 /**
