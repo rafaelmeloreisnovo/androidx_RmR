@@ -13,6 +13,14 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
+#include <cstddef>
+
+#if defined(__linux__)
+    #include <sys/auxv.h>
+    #if defined(__aarch64__) || defined(__arm__)
+        #include <asm/hwcap.h>
+    #endif
+#endif
 
 // Architecture-specific intrinsics
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
@@ -35,6 +43,236 @@
 #define ALIGN_TO_CACHE_LINE __attribute__((aligned(CACHE_LINE_SIZE)))
 
 extern "C" {
+
+namespace {
+
+constexpr int kMatrixBlockSize = 64;
+constexpr size_t kSseAlignment = 16;
+constexpr size_t kAvxAlignment = 32;
+constexpr size_t kSimdWidthSse = 4;
+constexpr size_t kSimdWidthAvx = 8;
+constexpr size_t kSimdWidthNeon = 4;
+
+inline bool IsAligned(const void* ptr, size_t alignment) {
+    return (reinterpret_cast<uintptr_t>(ptr) % alignment) == 0;
+}
+
+inline bool IsSimdMatrixCompatible(const float* bPtr,
+                                   const float* resultPtr,
+                                   size_t cols,
+                                   size_t alignment,
+                                   size_t vectorWidth) {
+    if (cols == 0 || cols % vectorWidth != 0) {
+        return false;
+    }
+    if (!IsAligned(bPtr, alignment) || !IsAligned(resultPtr, alignment)) {
+        return false;
+    }
+    size_t rowStrideBytes = cols * sizeof(float);
+    if (rowStrideBytes % alignment != 0) {
+        return false;
+    }
+    return true;
+}
+
+void MatrixMultiplyScalarBlocked(const float* aPtr,
+                                 const float* bPtr,
+                                 float* resultPtr,
+                                 int rows,
+                                 int inner,
+                                 int cols) {
+    size_t rowsSize = static_cast<size_t>(rows);
+    size_t innerSize = static_cast<size_t>(inner);
+    size_t colsSize = static_cast<size_t>(cols);
+    size_t elementCount = rowsSize * colsSize;
+    memset(resultPtr, 0, elementCount * sizeof(float));
+
+    for (int ii = 0; ii < rows; ii += kMatrixBlockSize) {
+        for (int jj = 0; jj < cols; jj += kMatrixBlockSize) {
+            for (int kk = 0; kk < inner; kk += kMatrixBlockSize) {
+                int iMax = (ii + kMatrixBlockSize < rows) ? ii + kMatrixBlockSize : rows;
+                int jMax = (jj + kMatrixBlockSize < cols) ? jj + kMatrixBlockSize : cols;
+                int kMax = (kk + kMatrixBlockSize < inner) ? kk + kMatrixBlockSize : inner;
+
+                for (int i = ii; i < iMax; i++) {
+                    for (int k = kk; k < kMax; k++) {
+                        size_t aIndex =
+                                static_cast<size_t>(i) * innerSize + static_cast<size_t>(k);
+                        float aik = aPtr[aIndex];
+                        for (int j = jj; j < jMax; j++) {
+                            size_t resultIndex =
+                                    static_cast<size_t>(i) * colsSize + static_cast<size_t>(j);
+                            size_t bIndex =
+                                    static_cast<size_t>(k) * colsSize + static_cast<size_t>(j);
+                            resultPtr[resultIndex] += aik * bPtr[bIndex];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#if defined(HAVE_AVX2)
+bool CpuHasAvx2Runtime() {
+#if (defined(__x86_64__) || defined(__i386__))
+    return __builtin_cpu_supports("avx2");
+#else
+    return false;
+#endif
+}
+
+void MatrixMultiplyAvx2(const float* aPtr,
+                        const float* bPtr,
+                        float* resultPtr,
+                        int rows,
+                        int inner,
+                        int cols) {
+    size_t rowsSize = static_cast<size_t>(rows);
+    size_t innerSize = static_cast<size_t>(inner);
+    size_t colsSize = static_cast<size_t>(cols);
+    size_t elementCount = rowsSize * colsSize;
+    memset(resultPtr, 0, elementCount * sizeof(float));
+
+    for (int ii = 0; ii < rows; ii += kMatrixBlockSize) {
+        for (int jj = 0; jj < cols; jj += kMatrixBlockSize) {
+            for (int kk = 0; kk < inner; kk += kMatrixBlockSize) {
+                int iMax = (ii + kMatrixBlockSize < rows) ? ii + kMatrixBlockSize : rows;
+                int jMax = (jj + kMatrixBlockSize < cols) ? jj + kMatrixBlockSize : cols;
+                int kMax = (kk + kMatrixBlockSize < inner) ? kk + kMatrixBlockSize : inner;
+
+                for (int i = ii; i < iMax; i++) {
+                    for (int k = kk; k < kMax; k++) {
+                        size_t aIndex =
+                                static_cast<size_t>(i) * innerSize + static_cast<size_t>(k);
+                        __m256 aik = _mm256_set1_ps(aPtr[aIndex]);
+                        size_t baseB = static_cast<size_t>(k) * colsSize;
+                        size_t baseC = static_cast<size_t>(i) * colsSize;
+                        for (int j = jj; j < jMax; j += kSimdWidthAvx) {
+                            size_t bIndex = baseB + static_cast<size_t>(j);
+                            size_t cIndex = baseC + static_cast<size_t>(j);
+                            __m256 vb = _mm256_load_ps(bPtr + bIndex);
+                            __m256 vc = _mm256_load_ps(resultPtr + cIndex);
+                            __m256 prod = _mm256_mul_ps(vb, aik);
+                            vc = _mm256_add_ps(vc, prod);
+                            _mm256_store_ps(resultPtr + cIndex, vc);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+#endif
+
+#if defined(HAVE_SSE)
+bool CpuHasSseRuntime() {
+#if (defined(__x86_64__) || defined(__i386__))
+    return __builtin_cpu_supports("sse");
+#else
+    return false;
+#endif
+}
+
+void MatrixMultiplySse(const float* aPtr,
+                       const float* bPtr,
+                       float* resultPtr,
+                       int rows,
+                       int inner,
+                       int cols) {
+    size_t rowsSize = static_cast<size_t>(rows);
+    size_t innerSize = static_cast<size_t>(inner);
+    size_t colsSize = static_cast<size_t>(cols);
+    size_t elementCount = rowsSize * colsSize;
+    memset(resultPtr, 0, elementCount * sizeof(float));
+
+    for (int ii = 0; ii < rows; ii += kMatrixBlockSize) {
+        for (int jj = 0; jj < cols; jj += kMatrixBlockSize) {
+            for (int kk = 0; kk < inner; kk += kMatrixBlockSize) {
+                int iMax = (ii + kMatrixBlockSize < rows) ? ii + kMatrixBlockSize : rows;
+                int jMax = (jj + kMatrixBlockSize < cols) ? jj + kMatrixBlockSize : cols;
+                int kMax = (kk + kMatrixBlockSize < inner) ? kk + kMatrixBlockSize : inner;
+
+                for (int i = ii; i < iMax; i++) {
+                    for (int k = kk; k < kMax; k++) {
+                        size_t aIndex =
+                                static_cast<size_t>(i) * innerSize + static_cast<size_t>(k);
+                        __m128 aik = _mm_set1_ps(aPtr[aIndex]);
+                        size_t baseB = static_cast<size_t>(k) * colsSize;
+                        size_t baseC = static_cast<size_t>(i) * colsSize;
+                        for (int j = jj; j < jMax; j += kSimdWidthSse) {
+                            size_t bIndex = baseB + static_cast<size_t>(j);
+                            size_t cIndex = baseC + static_cast<size_t>(j);
+                            __m128 vb = _mm_load_ps(bPtr + bIndex);
+                            __m128 vc = _mm_load_ps(resultPtr + cIndex);
+                            vc = _mm_add_ps(vc, _mm_mul_ps(vb, aik));
+                            _mm_store_ps(resultPtr + cIndex, vc);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+#endif
+
+#if defined(HAVE_NEON)
+bool CpuHasNeonRuntime() {
+#if defined(__linux__) && (defined(__aarch64__) || defined(__arm__))
+    unsigned long caps = getauxval(AT_HWCAP);
+#if defined(__aarch64__)
+    return (caps & HWCAP_ASIMD) != 0;
+#else
+    return (caps & HWCAP_NEON) != 0;
+#endif
+#else
+    return false;
+#endif
+}
+
+void MatrixMultiplyNeon(const float* aPtr,
+                        const float* bPtr,
+                        float* resultPtr,
+                        int rows,
+                        int inner,
+                        int cols) {
+    size_t rowsSize = static_cast<size_t>(rows);
+    size_t innerSize = static_cast<size_t>(inner);
+    size_t colsSize = static_cast<size_t>(cols);
+    size_t elementCount = rowsSize * colsSize;
+    memset(resultPtr, 0, elementCount * sizeof(float));
+
+    for (int ii = 0; ii < rows; ii += kMatrixBlockSize) {
+        for (int jj = 0; jj < cols; jj += kMatrixBlockSize) {
+            for (int kk = 0; kk < inner; kk += kMatrixBlockSize) {
+                int iMax = (ii + kMatrixBlockSize < rows) ? ii + kMatrixBlockSize : rows;
+                int jMax = (jj + kMatrixBlockSize < cols) ? jj + kMatrixBlockSize : cols;
+                int kMax = (kk + kMatrixBlockSize < inner) ? kk + kMatrixBlockSize : inner;
+
+                for (int i = ii; i < iMax; i++) {
+                    for (int k = kk; k < kMax; k++) {
+                        size_t aIndex =
+                                static_cast<size_t>(i) * innerSize + static_cast<size_t>(k);
+                        float32x4_t aik = vdupq_n_f32(aPtr[aIndex]);
+                        size_t baseB = static_cast<size_t>(k) * colsSize;
+                        size_t baseC = static_cast<size_t>(i) * colsSize;
+                        for (int j = jj; j < jMax; j += kSimdWidthNeon) {
+                            size_t bIndex = baseB + static_cast<size_t>(j);
+                            size_t cIndex = baseC + static_cast<size_t>(j);
+                            float32x4_t vb = vld1q_f32(bPtr + bIndex);
+                            float32x4_t vc = vld1q_f32(resultPtr + cIndex);
+                            vc = vmlaq_f32(vc, vb, aik);
+                            vst1q_f32(resultPtr + cIndex, vc);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+#endif
+
+} // namespace
 
 /**
  * Initialize native library.
@@ -279,37 +517,44 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMatrixMultiply(
         return;
     }
     
-    // This is a simplified implementation
-    // Production code would use highly optimized BLAS library
-    const int BLOCK_SIZE = 64;
-    
-    // Initialize result to zero
-    memset(resultPtr, 0, elementCount * sizeof(float));
-    
-    // Blocked matrix multiplication
-    for (int ii = 0; ii < rows; ii += BLOCK_SIZE) {
-        for (int jj = 0; jj < cols; jj += BLOCK_SIZE) {
-            for (int kk = 0; kk < inner; kk += BLOCK_SIZE) {
-                int iMax = (ii + BLOCK_SIZE < rows) ? ii + BLOCK_SIZE : rows;
-                int jMax = (jj + BLOCK_SIZE < cols) ? jj + BLOCK_SIZE : cols;
-                int kMax = (kk + BLOCK_SIZE < inner) ? kk + BLOCK_SIZE : inner;
-                
-                for (int i = ii; i < iMax; i++) {
-                    for (int k = kk; k < kMax; k++) {
-                        size_t aIndex =
-                                static_cast<size_t>(i) * innerSize + static_cast<size_t>(k);
-                        float aik = aPtr[aIndex];
-                        for (int j = jj; j < jMax; j++) {
-                            size_t resultIndex =
-                                    static_cast<size_t>(i) * colsSize + static_cast<size_t>(j);
-                            size_t bIndex =
-                                    static_cast<size_t>(k) * colsSize + static_cast<size_t>(j);
-                            resultPtr[resultIndex] += aik * bPtr[bIndex];
-                        }
-                    }
-                }
-            }
-        }
+    // SIMD paths assume:
+    // 1) Row-major contiguous buffers (stride == cols for B/result).
+    // 2) Aligned base pointers for B/result (16 bytes for SSE/NEON, 32 bytes for AVX2).
+    // 3) cols is a multiple of the SIMD vector width (4 for SSE/NEON, 8 for AVX2).
+    // If any requirement is not met, we fall back to scalar blocked implementation.
+    bool usedSimd = false;
+
+#if defined(HAVE_AVX2)
+    if (!usedSimd &&
+        CpuHasAvx2Runtime() &&
+        IsSimdMatrixCompatible(bPtr, resultPtr, colsSize, kAvxAlignment, kSimdWidthAvx)) {
+        MatrixMultiplyAvx2(aPtr, bPtr, resultPtr, rows, inner, cols);
+        usedSimd = true;
+    }
+#endif
+
+#if defined(HAVE_SSE)
+    if (!usedSimd &&
+        CpuHasSseRuntime() &&
+        IsSimdMatrixCompatible(bPtr, resultPtr, colsSize, kSseAlignment, kSimdWidthSse)) {
+        MatrixMultiplySse(aPtr, bPtr, resultPtr, rows, inner, cols);
+        usedSimd = true;
+    }
+#endif
+
+#if defined(HAVE_NEON)
+    if (!usedSimd &&
+        CpuHasNeonRuntime() &&
+        IsSimdMatrixCompatible(bPtr, resultPtr, colsSize, kSseAlignment, kSimdWidthNeon)) {
+        MatrixMultiplyNeon(aPtr, bPtr, resultPtr, rows, inner, cols);
+        usedSimd = true;
+    }
+#endif
+
+    if (!usedSimd) {
+        // This is a simplified implementation
+        // Production code would use highly optimized BLAS library
+        MatrixMultiplyScalarBlocked(aPtr, bPtr, resultPtr, rows, inner, cols);
     }
 }
 
