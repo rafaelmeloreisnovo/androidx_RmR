@@ -10,6 +10,18 @@ O módulo RmR (Rafael Melo Reis) oferece uma abordagem inovadora e otimizada par
 - **Zero Dependências**: Auto-contido com requisitos externos mínimos
 - **Computação Determinística**: Todo estado representado como pontos determinísticos no espaço matricial
 
+## Portal de Documentação
+
+Use o portal abaixo como hub de navegação profissional para toda a documentação do RmR:
+
+- **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** — navegação, inventário completo e mapa de documentos.
+
+Links rápidos:
+- **[DIFERENCAS_DO_ORIGINAL_PT.md](DIFERENCAS_DO_ORIGINAL_PT.md)** — AndroidX vs RmR (benchmarks + migração)
+- **[IMPLEMENTATION_SUMMARY_FINAL.md](IMPLEMENTATION_SUMMARY_FINAL.md)** — visão final da implementação
+- **[SEMANTIC_ARCHITECTURE.md](SEMANTIC_ARCHITECTURE.md)** — estratégia de arquitetura e otimização
+- **[AUTORIA_E_LICENCA_PT.md](AUTORIA_E_LICENCA_PT.md)** — licenciamento e atribuição
+
 ## Filosofia
 
 O desenvolvimento Android tradicional usa APIs baseadas em funções com hierarquias de objetos. RmR reimagina isso tratando todo o estado como matrizes onde:
