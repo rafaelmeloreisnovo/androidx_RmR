@@ -1,12 +1,74 @@
-# RmR Documentation Index
+# RmR Documentation Portal
 
-## Quick Navigation Guide
+**Status:** Canonical navigation hub for all RmR documentation.  
+**Languages:** EN / PT-BR with supporting ES/FR/DE variants.  
+**Scope:** Technical, architectural, legal, and performance documentation across the RmR stack.
 
-This index helps you find the right documentation for your needs.
+> ✅ **If you felt some docs were “soltos” (scattered), this is the single source of truth.**
 
 ---
 
-## 🆚 Understanding RmR vs AndroidX
+## Quick Navigation
+
+| Need | Start Here | Why |
+| --- | --- | --- |
+| Overview & Philosophy | [README.md](README.md) / [README_PT.md](README_PT.md) | Core concepts + usage patterns |
+| AndroidX vs RmR | [DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md) | Full technical comparison + benchmarks |
+| Implementation Summary | [IMPLEMENTATION_SUMMARY_FINAL.md](IMPLEMENTATION_SUMMARY_FINAL.md) | Consolidated final implementation report |
+| Performance Deep Dive | [SEMANTIC_ARCHITECTURE.md](SEMANTIC_ARCHITECTURE.md) | Optimization and architecture strategy |
+| Legal & Licensing | [AUTHORSHIP_AND_LICENSE.md](AUTHORSHIP_AND_LICENSE.md) | Attribution and compliance details |
+| Rafaelia Restrictions | [rafaelia/LEGAL_NOTICE.md](rafaelia/LEGAL_NOTICE.md) | Authorized-use rules |
+
+---
+
+## Documentation Map (Professional Navigation)
+
+```mermaid
+flowchart TD
+    Portal[Documentation Portal]
+    Portal --> Overview[Overview & Philosophy]
+    Portal --> Comparison[AndroidX vs RmR]
+    Portal --> Architecture[Architecture & Semantics]
+    Portal --> Implementation[Implementation & Refactoring]
+    Portal --> Performance[Performance & Benchmarks]
+    Portal --> Legal[Legal & Licensing]
+    Portal --> Rafaelia[Rafaelia Submodule]
+    Portal --> Roadmap[Roadmap & Execution]
+
+    Overview --> README_EN[README.md]
+    Overview --> README_PT[README_PT.md]
+
+    Comparison --> Diff_EN[DIFFERENCES_FROM_ORIGINAL.md]
+    Comparison --> Diff_PT[DIFERENCAS_DO_ORIGINAL_PT.md]
+    Comparison --> Diff_ES[DIFERENCIAS_DEL_ORIGINAL_ES.md]
+    Comparison --> Diff_FR[DIFFERENCES_ORIGINAL_FR.md]
+    Comparison --> Diff_DE[UNTERSCHIEDE_VOM_ORIGINAL_DE.md]
+
+    Architecture --> Semantic[SEMANTIC_ARCHITECTURE.md]
+    Architecture --> Navigation[NAVIGATION_MVP_GUIDE.md]
+
+    Implementation --> Impl[IMPLEMENTATION_SUMMARY.md]
+    Implementation --> Impl_Final[IMPLEMENTATION_SUMMARY_FINAL.md]
+    Implementation --> Refactor[REFACTORING_SUMMARY.md]
+
+    Performance --> Expected[EXPECTED_BENCHMARKS.md]
+    Performance --> Perf_Bruta[PERFORMANCE_BRUTA_GUIDE.md]
+
+    Legal --> Authorship[AUTHORSHIP_AND_LICENSE.md]
+    Legal --> Authorship_PT[AUTORIA_E_LICENCA_PT.md]
+    Legal --> License[LICENSE.md]
+
+    Rafaelia --> Rafaelia_Readme[rafaelia/README.md]
+    Rafaelia --> Rafaelia_Notice[rafaelia/LEGAL_NOTICE.md]
+    Rafaelia --> Rafaelia_LLA[rafaelia/LOW_LEVEL_ARCHITECTURE.md]
+    Rafaelia --> Rafaelia_Authorize[rafaelia/USAGE_AUTHORIZATION.md]
+
+    Roadmap --> Roadmap_PT[ROADMAP_RMR_PT.md]
+```
+
+---
+
+## 🧭 Orientation: Understanding RmR vs AndroidX
 
 **Start here if you want to understand what makes RmR different from the original AndroidX:**
 
@@ -22,15 +84,15 @@ This index helps you find the right documentation for your needs.
   - Todos os detalhes em português
   - Exemplos e benchmarks
 
-### What You'll Learn:
-- ✅ How AndroidX and RmR architectures differ
-- ✅ Why RmR is 3-50x faster with 99%+ less memory
-- ✅ When to use each approach
-- ✅ How to migrate from AndroidX to RmR
+### What You'll Learn
+- ✅ How AndroidX and RmR architectures differ  
+- ✅ Why RmR claims 3–50x faster execution with 99%+ less memory  
+- ✅ When to use each approach  
+- ✅ How to migrate from AndroidX to RmR  
 
 ---
 
-## 📚 Main Documentation
+## 📚 Core Documentation
 
 **Read these for comprehensive understanding of the RmR module:**
 
@@ -63,11 +125,11 @@ This index helps you find the right documentation for your needs.
   - Hot paths em RmR/Compose/Room/Camera
   - Checklist de execução e ganhos esperados
 
-### What You'll Learn:
-- ✅ RmR philosophy (matrix-based computation)
-- ✅ How to use each module (lifecycle, navigation, preferences, room)
-- ✅ Performance characteristics
-- ✅ Design principles
+### What You'll Learn
+- ✅ RmR philosophy (matrix-based computation)  
+- ✅ How to use each module (lifecycle, navigation, preferences, room)  
+- ✅ Performance characteristics  
+- ✅ Design principles  
 
 ---
 
@@ -92,15 +154,15 @@ This index helps you find the right documentation for your needs.
   - O que foi entendido e implementado
   - Transmutações possíveis
 
-### What You'll Learn:
-- ✅ What was implemented and why
-- ✅ How each requirement was addressed
-- ✅ Testing and validation results
-- ✅ Security compliance
+### What You'll Learn
+- ✅ What was implemented and why  
+- ✅ How each requirement was addressed  
+- ✅ Testing and validation results  
+- ✅ Security compliance  
 
 ---
 
-## 🏗️ Architecture and Design
+## 🏗️ Architecture, Semantics & Design
 
 **Read these for deep technical understanding:**
 
@@ -123,16 +185,16 @@ This index helps you find the right documentation for your needs.
   - MVP responsibilities
   - Module boundary rules
 
-### What You'll Learn:
-- ✅ Advanced optimization techniques
-- ✅ Hardware-specific adaptations
-- ✅ SIMD acceleration details
-- ✅ Cache-blocking algorithms
-- ✅ Legal and licensing framework
+### What You'll Learn
+- ✅ Advanced optimization techniques  
+- ✅ Hardware-specific adaptations  
+- ✅ SIMD acceleration details  
+- ✅ Cache-blocking algorithms  
+- ✅ Legal and licensing framework  
 
 ---
 
-## 📖 Documentation by Topic
+## 📖 Documentation by Topic (Curated)
 
 ### Performance Optimization
 1. [DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md) - Section 6: Performance Differences
@@ -205,7 +267,7 @@ This index helps you find the right documentation for your needs.
 
 ---
 
-## 📊 Key Statistics
+## 📊 Key Statistics (Snapshot)
 
 From the documentation:
 
@@ -214,6 +276,67 @@ From the documentation:
 - **APK Size Reduction:** ~600 KB (11% smaller)
 - **Method Count Reduction:** 1,750 methods (92% fewer)
 - **Dependencies:** Only 1 (androidx.annotation, compile-time only)
+
+```mermaid
+pie title Snapshot: Relative Impact (Claims from Documentation)
+    "Performance (3–50x)" : 50
+    "Memory (99%+ less)" : 30
+    "APK Size (~11% less)" : 10
+    "Method Count (92% fewer)" : 10
+```
+
+> These values are summarized from the existing comparison documentation. Use the comparison docs for the supporting narrative and detailed claims.
+
+---
+
+## 🗂️ Complete Inventory (All Markdown Docs)
+
+### Core & Overview
+- [README.md](README.md)
+- [README_PT.md](README_PT.md)
+- [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)
+- [DOCUMENTACAO_ACADEMICA_PROFISSIONAL.md](DOCUMENTACAO_ACADEMICA_PROFISSIONAL.md)
+- [MULTILANGUAGE_DOCS.md](MULTILANGUAGE_DOCS.md)
+- [MULTILANGUAGE_IMPLEMENTATION_SUMMARY.md](MULTILANGUAGE_IMPLEMENTATION_SUMMARY.md)
+
+### Comparisons (AndroidX vs RmR)
+- [DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md)
+- [DIFERENCAS_DO_ORIGINAL_PT.md](DIFERENCAS_DO_ORIGINAL_PT.md)
+- [DIFERENCIAS_DEL_ORIGINAL_ES.md](DIFERENCIAS_DEL_ORIGINAL_ES.md)
+- [DIFFERENCES_ORIGINAL_FR.md](DIFFERENCES_ORIGINAL_FR.md)
+- [UNTERSCHIEDE_VOM_ORIGINAL_DE.md](UNTERSCHIEDE_VOM_ORIGINAL_DE.md)
+
+### Architecture, Semantics & Navigation
+- [SEMANTIC_ARCHITECTURE.md](SEMANTIC_ARCHITECTURE.md)
+- [NAVIGATION_MVP_GUIDE.md](NAVIGATION_MVP_GUIDE.md)
+- [CORE_CONTRACT.md](CORE_CONTRACT.md)
+
+### Implementation & Refactoring
+- [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)
+- [IMPLEMENTATION_SUMMARY_FINAL.md](IMPLEMENTATION_SUMMARY_FINAL.md)
+- [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)
+- [RESUMO_FINAL.md](RESUMO_FINAL.md)
+
+### Performance & Optimization
+- [EXPECTED_BENCHMARKS.md](EXPECTED_BENCHMARKS.md)
+- [OPTIMIZATION_SUMMARY.md](OPTIMIZATION_SUMMARY.md)
+- [PERFORMANCE_BRUTA_GUIDE.md](PERFORMANCE_BRUTA_GUIDE.md)
+- [rmr-core/HARDWARE_OPTIMIZATION.md](rmr-core/HARDWARE_OPTIMIZATION.md)
+
+### Roadmap & Planning
+- [ROADMAP_RMR_PT.md](ROADMAP_RMR_PT.md)
+
+### Legal & Licensing
+- [AUTHORSHIP_AND_LICENSE.md](AUTHORSHIP_AND_LICENSE.md)
+- [AUTORIA_E_LICENCA_PT.md](AUTORIA_E_LICENCA_PT.md)
+- [LICENSE.md](LICENSE.md)
+
+### Rafaelia (Restricted)
+- [rafaelia/README.md](rafaelia/README.md)
+- [rafaelia/LOW_LEVEL_ARCHITECTURE.md](rafaelia/LOW_LEVEL_ARCHITECTURE.md)
+- [rafaelia/LEGAL_NOTICE.md](rafaelia/LEGAL_NOTICE.md)
+- [rafaelia/USAGE_AUTHORIZATION.md](rafaelia/USAGE_AUTHORIZATION.md)
+- [rafaelia/IMPLEMENTACAO_COMPLETA_PT.md](rafaelia/IMPLEMENTACAO_COMPLETA_PT.md)
 
 ---
 
@@ -230,9 +353,9 @@ From the documentation:
 
 ## 📝 Document Information
 
-- **Total Documentation:** 10 files, ~131 KB
-- **Languages:** English and Portuguese (Brazilian)
-- **Last Updated:** January 3, 2026
+**Inventory:** 31 Markdown files indexed  
+**Languages:** English and Portuguese (Brazilian) + ES/FR/DE variants  
+**Last Updated:** See individual docs (this portal is the canonical index)  
 - **Maintained By:** Rafael Melo Reis (RmR)
 - **License:** Apache 2.0
 

@@ -10,6 +10,18 @@ The RmR module provides an innovative, optimized approach to AndroidX components
 - **Zero Dependencies**: Self-contained with minimal external requirements
 - **Deterministic Computation**: All state represented as deterministic points in matrix space
 
+## Documentation Portal
+
+Use the portal below as the canonical navigation hub for all RmR documentation, comparisons, and legal notes:
+
+- **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** — professional navigation, complete inventory, and doc map.
+
+Quick links:
+- **[DIFFERENCES_FROM_ORIGINAL.md](DIFFERENCES_FROM_ORIGINAL.md)** — AndroidX vs RmR (benchmarks + migration)
+- **[IMPLEMENTATION_SUMMARY_FINAL.md](IMPLEMENTATION_SUMMARY_FINAL.md)** — final implementation overview
+- **[SEMANTIC_ARCHITECTURE.md](SEMANTIC_ARCHITECTURE.md)** — optimization/architecture strategy
+- **[AUTHORSHIP_AND_LICENSE.md](AUTHORSHIP_AND_LICENSE.md)** — licensing and attribution
+
 ## Philosophy
 
 Traditional Android development uses function-based APIs with object hierarchies. RmR reimagines this by treating all state as matrices where:
