@@ -18,6 +18,7 @@ package androidx.rmr.core;
 
 import androidx.annotation.NonNull;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 public final class RmRMatrix {
@@ -82,9 +83,6 @@ public final class RmRMatrix {
         ensureSameSize(other);
         double[] localData = data;
         int length = localData.length;
-        if (length == 0) {
-            return new RmRMatrix(rows, cols, new double[0]);
-        }
         double[] result = new double[length];
         if (other == this) {
             for (int i = 0; i < length; i++) {
@@ -108,9 +106,6 @@ public final class RmRMatrix {
     public RmRMatrix linearFlip() {
         double[] localData = data;
         int length = localData.length;
-        if (length == 0) {
-            return new RmRMatrix(rows, cols, new double[0]);
-        }
         double[] result = new double[length];
         for (int i = 0; i < length; i++) {
             double value = localData[i];
@@ -137,6 +132,10 @@ public final class RmRMatrix {
         return identity;
     }
 
+    /**
+     * Returns the internal storage without defensive copies.
+     * Intended for package-local high-performance operations.
+     */
     double[] getDataUnsafe() {
         return data;
     }
@@ -166,6 +165,7 @@ public final class RmRMatrix {
             throw new IllegalArgumentException("Matrix size overflows integer bounds.");
         }
         double[] buffer = DoubleArrayPool.acquire((int) size);
+        Arrays.fill(buffer, 0.0);
         return new RmRMatrix(rows, cols, buffer);
     }
 
