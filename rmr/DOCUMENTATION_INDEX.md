@@ -34,6 +34,11 @@ This index helps you find the right documentation for your needs.
 
 **Read these for comprehensive understanding of the RmR module:**
 
+- **[ROADMAP_RMR_PT.md](ROADMAP_RMR_PT.md)** 🗺️ (Português, roadmap executivo)
+  - Mapa de entregas e fases
+  - O que está pronto vs. pendente
+  - Critérios de pronto e anexos necessários
+
 - **[README.md](README.md)** 📄 (English, 11 KB)
   - Module overview and philosophy
   - Core concepts and design principles
