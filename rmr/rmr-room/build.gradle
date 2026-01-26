@@ -22,6 +22,10 @@ plugins {
 
 android {
     namespace "androidx.rmr.room"
+
+    defaultConfig {
+        consumerProguardFiles "consumer-proguard-rules.pro"
+    }
 }
 
 dependencies {
@@ -29,6 +33,7 @@ dependencies {
     implementation(libs.androidx.annotation)
     
     // Test dependencies
+    testImplementation(libs.junit)
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.testRunner)
 }
