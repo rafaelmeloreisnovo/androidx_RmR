@@ -32,19 +32,6 @@ public final class RmRHardware {
         AVX
     }
 
-    static {
-        sNativeAvailable = false;
-        sTriedNativeLoad = false;
-        try {
-            System.loadLibrary("rmr-core-native");
-            sNativeAvailable = true;
-            sTriedNativeLoad = true;
-        } catch (UnsatisfiedLinkError e) {
-            sNativeAvailable = false;
-            sTriedNativeLoad = true;
-        }
-    }
-
     private RmRHardware() {
     }
 

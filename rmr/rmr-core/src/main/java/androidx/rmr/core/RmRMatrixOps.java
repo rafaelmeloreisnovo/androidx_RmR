@@ -55,6 +55,35 @@ public final class RmRMatrixOps {
         return multiplyScalar(left, right);
     }
 
+    public static void multiplyInto(
+            @NonNull RmRMatrix left,
+            @NonNull RmRMatrix right,
+            @NonNull RmRMatrix out) {
+        if (left.getCols() != right.getRows()) {
+            throw new IllegalArgumentException("Incompatible matrix dimensions.");
+        }
+        if (left.getRows() != out.getRows() || right.getCols() != out.getCols()) {
+            throw new IllegalArgumentException("Output matrix has incompatible dimensions.");
+        }
+        double[] outData = out.getDataUnsafe();
+        int outLength = outData.length;
+        for (int i = 0; i < outLength; i++) {
+            outData[i] = 0.0;
+        }
+        if (RmRHardware.ensureNativeLoaded()) {
+            multiplyNative(
+                    left.getDataUnsafe(),
+                    left.getRows(),
+                    left.getCols(),
+                    right.getDataUnsafe(),
+                    right.getRows(),
+                    right.getCols(),
+                    outData);
+        } else {
+            multiplyScalarInto(left, right, outData);
+        }
+    }
+
     @NonNull
     public static RmRMatrix add(@NonNull RmRMatrix left, @NonNull RmRMatrix right) {
         return left.add(right);
@@ -63,6 +92,26 @@ public final class RmRMatrixOps {
     @NonNull
     public static RmRMatrix linearFlip(@NonNull RmRMatrix matrix) {
         return matrix.linearFlip();
+    }
+
+    private static void multiplyScalarInto(
+            @NonNull RmRMatrix left,
+            @NonNull RmRMatrix right,
+            double[] result) {
+        int rows = left.getRows();
+        int cols = left.getCols();
+        int resultCols = right.getCols();
+        double[] leftData = left.getDataUnsafe();
+        double[] rightData = right.getDataUnsafe();
+        if (resultCols == 1) {
+            multiplyVector(leftData, rightData, result, rows, cols);
+        } else if (shouldBlockForMultiply(rows, cols, resultCols)) {
+            multiplyBlocked(leftData, rightData, result, rows, cols, resultCols);
+        } else if (shouldTransposeForMultiply(rows, cols, resultCols)) {
+            multiplyWithTransposedRight(leftData, rightData, result, rows, cols, resultCols);
+        } else {
+            multiplyStandard(leftData, rightData, result, rows, cols, resultCols);
+        }
     }
 
     @NonNull
