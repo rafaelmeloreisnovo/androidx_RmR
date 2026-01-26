@@ -17,6 +17,7 @@
 package androidx.rmr.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -55,5 +56,15 @@ public class RmRMatrixTest {
 
         assertEquals(0.0, flipped.get(0, 0), 0.0);
         assertEquals(-0.5, flipped.get(0, 1), 0.0);
+    }
+
+    @Test
+    public void linearFlipPreservesNaN() {
+        RmRMatrix matrix = new RmRMatrix(1, 1);
+        matrix.set(0, 0, Double.NaN);
+
+        RmRMatrix flipped = matrix.linearFlip();
+
+        assertTrue(Double.isNaN(flipped.get(0, 0)));
     }
 }

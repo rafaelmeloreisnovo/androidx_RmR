@@ -97,7 +97,9 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeFreeAligned(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemoryCopy(
         JNIEnv* env, jclass clazz, jlong src, jlong dst, jint size) {
-    
+    if (size <= 0 || src == 0 || dst == 0) {
+        return;
+    }
     const void* srcPtr = reinterpret_cast<const void*>(src);
     void* dstPtr = reinterpret_cast<void*>(dst);
     
@@ -107,12 +109,30 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemoryCopy(
 }
 
 /**
+ * Returns the native address of a direct ByteBuffer, or 0 if unavailable.
+ */
+JNIEXPORT jlong JNICALL
+Java_androidx_rmr_rafaelia_RafaeliaCore_nativeGetDirectBufferAddress(
+        JNIEnv* env, jclass clazz, jobject buffer) {
+    if (buffer == nullptr) {
+        return 0;
+    }
+    void* address = env->GetDirectBufferAddress(buffer);
+    if (address == nullptr) {
+        return 0;
+    }
+    return reinterpret_cast<jlong>(address);
+}
+
+/**
  * Optimized memory set using SIMD when available.
  */
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemorySet(
         JNIEnv* env, jclass clazz, jlong address, jbyte value, jint size) {
-    
+    if (size <= 0 || address == 0) {
+        return;
+    }
     void* ptr = reinterpret_cast<void*>(address);
     memset(ptr, value, size);
 }
@@ -123,7 +143,9 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemorySet(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeVectorAdd(
         JNIEnv* env, jclass clazz, jlong a, jlong b, jlong result, jint length) {
-    
+    if (length <= 0 || a == 0 || b == 0 || result == 0) {
+        return;
+    }
     const float* aPtr = reinterpret_cast<const float*>(a);
     const float* bPtr = reinterpret_cast<const float*>(b);
     float* resultPtr = reinterpret_cast<float*>(result);
@@ -168,7 +190,9 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeVectorAdd(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeVectorMultiply(
         JNIEnv* env, jclass clazz, jlong a, jlong b, jlong result, jint length) {
-    
+    if (length <= 0 || a == 0 || b == 0 || result == 0) {
+        return;
+    }
     const float* aPtr = reinterpret_cast<const float*>(a);
     const float* bPtr = reinterpret_cast<const float*>(b);
     float* resultPtr = reinterpret_cast<float*>(result);
@@ -216,7 +240,9 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMatrixMultiply(
         JNIEnv* env, jclass clazz, 
         jlong a, jlong b, jlong result, 
         jint rows, jint cols) {
-    
+    if (rows <= 0 || cols <= 0 || a == 0 || b == 0 || result == 0) {
+        return;
+    }
     const float* aPtr = reinterpret_cast<const float*>(a);
     const float* bPtr = reinterpret_cast<const float*>(b);
     float* resultPtr = reinterpret_cast<float*>(result);
@@ -287,7 +313,9 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeGetCpuFeatures(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativePrefetch(
         JNIEnv* env, jclass clazz, jlong address, jint hint) {
-    
+    if (address == 0) {
+        return;
+    }
     const void* ptr = reinterpret_cast<const void*>(address);
     
     // Use compiler builtin for prefetch

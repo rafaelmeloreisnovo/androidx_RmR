@@ -154,6 +154,7 @@ public final class RafaeliaCore {
     private static native void nativeMatrixMultiply(long a, long b, long result, int rows, int cols);
     private static native int nativeGetCpuFeatures();
     private static native void nativePrefetch(long address, int hint);
+    private static native long nativeGetDirectBufferAddress(@NonNull ByteBuffer buffer);
     
     static {
         // Load native library for bare-metal operations
@@ -457,6 +458,8 @@ public final class RafaeliaCore {
     /**
      * Performs cache-optimized memory copy.
      * Uses SIMD instructions when available.
+     *
+     * Thread-safety: callers must ensure exclusive access to the buffers.
      * 
      * @param src source buffer
      * @param srcOffset source offset
@@ -509,17 +512,11 @@ public final class RafaeliaCore {
      * @return native memory address
      */
     private static long getDirectBufferAddress(@NonNull ByteBuffer buffer) {
-        if (!buffer.isDirect()) {
+        if (!buffer.isDirect() || !sNativeAvailable) {
             return 0;
         }
-        try {
-            Field addressField = Buffer.class.getDeclaredField("address");
-            addressField.setAccessible(true);
-            long address = addressField.getLong(buffer);
-            return address > 0 ? address : 0;
-        } catch (ReflectiveOperationException | SecurityException e) {
-            return 0;
-        }
+        long address = nativeGetDirectBufferAddress(buffer);
+        return address > 0 ? address : 0;
     }
     
     /**
@@ -537,6 +534,9 @@ public final class RafaeliaCore {
             int length) {
         
         // Validate lengths
+        if (length < 0) {
+            throw new IllegalArgumentException("Length must be non-negative");
+        }
         if (a.length < length || b.length < length || result.length < length) {
             throw new IllegalArgumentException("Array lengths insufficient");
         }
@@ -563,6 +563,9 @@ public final class RafaeliaCore {
             int length) {
         
         // Validate lengths
+        if (length < 0) {
+            throw new IllegalArgumentException("Length must be non-negative");
+        }
         if (a.length < length || b.length < length || result.length < length) {
             throw new IllegalArgumentException("Array lengths insufficient");
         }
@@ -591,6 +594,9 @@ public final class RafaeliaCore {
             int rows, int inner, int cols) {
         
         // Validate sizes
+        if (rows < 0 || inner < 0 || cols < 0) {
+            throw new IllegalArgumentException("Matrix dimensions must be non-negative");
+        }
         if (a.length < rows * inner || 
             b.length < inner * cols || 
             result.length < rows * cols) {
@@ -635,7 +641,9 @@ public final class RafaeliaCore {
      */
     public static void prefetch(long address) {
         // Use native prefetch if available
-        nativePrefetch(address, 0); // hint 0 = temporal locality
+        if (sNativeAvailable && address != 0) {
+            nativePrefetch(address, 0); // hint 0 = temporal locality
+        }
     }
     
     /**
@@ -644,7 +652,7 @@ public final class RafaeliaCore {
      * @return bit mask of available features
      */
     public static int getCpuFeatures() {
-        return nativeGetCpuFeatures();
+        return sNativeAvailable ? nativeGetCpuFeatures() : 0;
     }
     
     /**
