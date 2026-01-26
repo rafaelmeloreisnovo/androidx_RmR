@@ -146,7 +146,25 @@ These targets define minimum acceptable performance for the RmR core:
 
 ---
 
-## 7. Benchmarking Tools (Planned)
+## 7. Baseline Guardrails (Initial)
+
+These guardrails are enforced by the Rafaelia benchmark harness with fixed sizes, fixed seeds, and
+min-time measurements. They are **initial baselines** aligned with the projections above and
+should be updated once real device measurements are captured.
+
+| Operation | Size | Baseline (ms) | Max Regression | Notes |
+| --- | --- | --- | --- | --- |
+| Matrix multiply | 128x128 | 3.5 | +20% | Seeded randomized inputs |
+| Vector add | 4096 | 0.15 | +20% | Seeded randomized inputs |
+| Vector multiply | 4096 | 0.17 | +20% | Seeded randomized inputs |
+| Memory copy | 1 MiB | 0.5 | +20% | Direct buffer copy |
+
+Guardrails can be enforced by passing the instrumentation argument
+`rmr.guardrails.enforce=true`; otherwise they report warnings only.
+
+---
+
+## 8. Benchmarking Tools (Planned)
 
 - Android Benchmark Library (if available)
 - JMH for JVM standalone tests
@@ -154,7 +172,7 @@ These targets define minimum acceptable performance for the RmR core:
 
 ---
 
-## 8. Reporting Format (Future Results)
+## 9. Reporting Format (Future Results)
 
 Benchmark results should append to this document using the following format:
 
@@ -169,7 +187,7 @@ Build: <Java/Native>
 
 ---
 
-## 9. Risk and Variability Factors
+## 10. Risk and Variability Factors
 
 - **Thermal throttling** on mobile devices can reduce performance.
 - **JIT warm-up** may affect Java fallback measurements.
@@ -178,7 +196,7 @@ Build: <Java/Native>
 
 ---
 
-## 10. Next Steps
+## 11. Next Steps
 
 1. Implement automated benchmark harness.
 2. Capture baseline measurements on reference devices.
