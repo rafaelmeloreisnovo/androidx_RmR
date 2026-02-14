@@ -12,20 +12,19 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -O3 -ffast-math -funroll-loop
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -fno-exceptions -fvisibility=hidden")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
 
-# Architecture-specific optimizations
+# Architecture-specific optimizations supported by Android NDK clang
 if(${ANDROID_ABI} STREQUAL "arm64-v8a")
-    # ARM64 optimizations with NEON
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a+simd -mtune=cortex-a53")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpu=neon-fp-armv8")
+    # AArch64 baseline with NEON/FP enabled by ABI
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a")
 elseif(${ANDROID_ABI} STREQUAL "armeabi-v7a")
-    # ARM32 with NEON
+    # ARMv7-A hard-float NEON profile supported by current NDK toolchain
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv7-a -mfpu=neon -mfloat-abi=softfp")
 elseif(${ANDROID_ABI} STREQUAL "x86_64")
-    # x86-64 with SSE/AVX
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64 -msse4.2 -mavx2 -mfma")
+    # x86_64 Android baseline supports SSE4.2
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64 -msse4.2")
 elseif(${ANDROID_ABI} STREQUAL "x86")
-    # x86 with SSE
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=i686 -msse4.2")
+    # x86 Android baseline with atom tuning and SSE3
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=i686 -mtune=atom -msse3 -mstackrealign -mfpmath=sse")
 endif()
 
 # Link-time optimization for maximum performance
