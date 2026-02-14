@@ -28,6 +28,7 @@ plugins {
 android {
     namespace "androidx.rmr.rafaelia"
 
+    // Required for AGP 9+ when using buildConfigField declarations.
     buildFeatures {
         buildConfig = true
     }
