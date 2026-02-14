@@ -324,7 +324,15 @@ public final class RafaeliaCore {
     
     /**
      * Checks for authorization file or token.
-     * 
+     *
+     * Supported path policy:
+     * - Single supported source is an explicit file path provided by
+     *   {@code -Drafaelia.license.path=<absolute-path>}.
+     * - The file is expected to live in app-internal storage (for example,
+     *   {@code Context.getFilesDir()}) to avoid runtime storage permissions.
+     * - External/shared storage and implicit fallback locations are intentionally
+     *   not supported.
+     *
      * @return true if authorization is present
      */
     private static boolean checkAuthorizationState() {
