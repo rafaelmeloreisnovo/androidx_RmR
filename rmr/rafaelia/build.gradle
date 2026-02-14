@@ -28,6 +28,10 @@ plugins {
 android {
     namespace "androidx.rmr.rafaelia"
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     def fastMathEnabled = project.findProperty("rmrFastMath")?.toString()?.toBoolean() ?: false
     def mathFlag = fastMathEnabled ? "-ffast-math" : "-fno-fast-math"
     
