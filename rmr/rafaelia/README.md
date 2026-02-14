@@ -71,6 +71,24 @@ the canonical payload (all key/value pairs excluding `signature_sha256`, sorted
 by key and joined with newlines). `expires_at` is optional; if provided it must
 be in the future. Records use ISO-8601 timestamps for `issued_at` and `expires_at`.
 
+## License Origin and Storage Policy
+
+### License origin
+- The legal base for this module follows the repository-level Apache 2.0 licensing lineage used by AndroidX (see `../LICENSE.md` and repository `LICENSE.txt`).
+- Module-specific restrictions and enforcement terms are defined in `LEGAL_NOTICE.md`.
+- Runtime authorization records consumed by `RafaeliaCore` are module artifacts and do not replace the repository license.
+
+### Supported storage path for runtime authorization (single supported path)
+- **Supported path**: app-internal/private storage only.
+- Provide the absolute path through `-Drafaelia.license.path=<absolute-path>`.
+- Recommended Android location: a file under `Context.getFilesDir()`.
+- **No runtime storage permission is required** with this model.
+- External/shared storage fallback is intentionally unsupported in the runtime checker.
+
+### Android permission requirements
+- No `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, or `MANAGE_EXTERNAL_STORAGE` permission is required by the module authorization flow.
+- If an application chooses to import a license from outside app-internal storage, this must be handled at application level (for example via SAF) and then copied into app-internal storage before configuring `rafaelia.license.path`.
+
 ## Architecture
 
 ### Native Layer (C++20)

@@ -20,7 +20,6 @@ import java.nio.Buffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
@@ -232,24 +231,22 @@ public final class RafaeliaCore {
     
     /**
      * Checks for authorization file or token.
-     * 
+     *
+     * Supported path policy:
+     * - Single supported source is an explicit file path provided by
+     *   {@code -Drafaelia.license.path=<absolute-path>}.
+     * - The file is expected to live in app-internal storage (for example,
+     *   {@code Context.getFilesDir()}) to avoid runtime storage permissions.
+     * - External/shared storage and implicit fallback locations are intentionally
+     *   not supported.
+     *
      * @return true if authorization is present
      */
     private static boolean checkAuthorizationFile() {
         List<Path> candidates = new ArrayList<>();
         String explicitPath = System.getProperty("rafaelia.license.path");
         if (explicitPath != null && !explicitPath.trim().isEmpty()) {
-            candidates.add(Paths.get(explicitPath.trim()));
-        }
-
-        String envPath = System.getenv("RAFAELIA_LICENSE_PATH");
-        if (envPath != null && !envPath.trim().isEmpty()) {
-            candidates.add(Paths.get(envPath.trim()));
-        }
-
-        String userHome = System.getProperty("user.home");
-        if (userHome != null && !userHome.trim().isEmpty()) {
-            candidates.add(Paths.get(userHome, ".rafaelia", "license.txt"));
+            candidates.add(Path.of(explicitPath.trim()));
         }
 
         String expectedHash = normalizeHash(System.getProperty("rafaelia.license.sha256"));

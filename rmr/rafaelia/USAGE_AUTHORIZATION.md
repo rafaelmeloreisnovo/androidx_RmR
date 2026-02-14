@@ -10,37 +10,25 @@ This document establishes the technical and legal framework for authorizing usag
 
 ### 1. Runtime Authorization Check
 
-The Rafaelia module implements multi-layer authorization validation:
+The Rafaelia module implements authorization validation using a single supported runtime path:
 
 #### Layer 1: User Identity Verification
 ```
 Check system property: user.name
 Expected value: "Rafael Melo Reis"
-Fallback: Authorization file verification
+Fallback: License record file verification
 ```
 
-#### Layer 2: Cryptographic Signature Verification
+#### Layer 2: License Record Verification (single supported path)
 ```
-Location: ${HOME}/.rafaelia/authorization.key
-Format: RSA-4096 signed license token
-Validation: Public key embedded in module
-Expiration: Renewable authorization period
-```
-
-#### Layer 3: Hardware Binding
-```
-Method: TPM (Trusted Platform Module) binding
-Purpose: Prevent unauthorized hardware transfer
-Validation: Hardware-specific encryption key
+Path source: -Drafaelia.license.path=<absolute-path>
+Recommended location: app-internal/private storage (Context.getFilesDir())
+Format: key=value license record (see README.md)
+Validation: Required fields + optional SHA-256 payload signature
 ```
 
-#### Layer 4: Network Authorization Server
-```
-Endpoint: https://authorization.rafaelia.rmr.dev/validate
-Method: OAuth 2.0 with client credentials
-Frequency: Periodic revalidation (24-hour intervals)
-Fallback: Grace period with cached authorization
-```
+External/shared storage fallback locations are intentionally unsupported by runtime validation.
+If import from external media is necessary, application code should use SAF and then copy data into app-internal storage.
 
 ### 2. Build-Time Authorization
 
@@ -70,43 +58,22 @@ Monitoring: Continuous usage tracking
 
 ## AUTHORIZATION FILE FORMAT
 
-### Standard Authorization File
+### Supported Authorization Record
 
-Location: `${HOME}/.rafaelia/authorization.key`
+Location: path provided through `-Drafaelia.license.path=<absolute-path>`.
 
-Format (JSON Web Token - JWT):
-```json
-{
-  "iss": "rafaelia-authorization-server",
-  "sub": "Rafael Melo Reis",
-  "aud": "androidx.rmr.rafaelia",
-  "exp": 1735689600,
-  "iat": 1704067200,
-  "jti": "unique-token-id",
-  "scope": "full-access",
-  "hardware_id": "sha256-hash-of-hardware-uuid",
-  "features": ["simd", "native", "bare-metal"],
-  "signature": "RSA-4096-signature"
-}
+Storage requirement:
+- Keep the file in app-internal/private storage.
+- Avoid external/shared storage to keep zero runtime permission requirements.
+
+Format (key=value):
 ```
-
-### Enterprise Authorization File
-
-For authorized organizational use:
-
-```json
-{
-  "iss": "rafaelia-authorization-server",
-  "sub": "Organization Name",
-  "aud": "androidx.rmr.rafaelia",
-  "exp": 1767225600,
-  "iat": 1704067200,
-  "jti": "org-unique-token-id",
-  "scope": "enterprise-deployment",
-  "authorized_users": ["user1@org.com", "user2@org.com"],
-  "deployment_limit": 1000,
-  "signature": "RSA-4096-signature"
-}
+product=RAFAELIA_CORE
+authorized_user=Rafael Melo Reis
+license_id=<unique-id>
+issued_at=2026-01-01T00:00:00Z
+expires_at=2027-01-01T00:00:00Z
+signature_sha256=<sha256-of-canonical-payload>
 ```
 
 ## OBTAINING AUTHORIZATION
@@ -318,3 +285,10 @@ Copyright holder reserves right to:
 This authorization framework is subject to the terms and conditions specified in LEGAL_NOTICE.md and may be updated without prior notice.
 
 Copyright (C) 2026 Rafael Melo Reis. All Rights Reserved.
+
+
+## ANDROID STORAGE AND PERMISSIONS
+
+- Runtime authorization path requires no storage runtime permission.
+- Do not request `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, or `MANAGE_EXTERNAL_STORAGE` for this flow.
+- When external selection is needed, use SAF at app layer, then persist/copy content to app-internal storage before module initialization.
