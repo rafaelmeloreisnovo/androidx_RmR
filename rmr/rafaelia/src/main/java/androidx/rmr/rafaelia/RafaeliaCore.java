@@ -18,13 +18,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.Buffer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.MessageDigest;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -236,20 +232,20 @@ public final class RafaeliaCore {
      * @return true if authorization is present
      */
     private static boolean checkAuthorizationFile() {
-        List<Path> candidates = new ArrayList<>();
+        List<File> candidates = new ArrayList<>();
         String explicitPath = System.getProperty("rafaelia.license.path");
         if (explicitPath != null && !explicitPath.trim().isEmpty()) {
-            candidates.add(Paths.get(explicitPath.trim()));
+            candidates.add(new File(explicitPath.trim()));
         }
 
         String envPath = System.getenv("RAFAELIA_LICENSE_PATH");
         if (envPath != null && !envPath.trim().isEmpty()) {
-            candidates.add(Paths.get(envPath.trim()));
+            candidates.add(new File(envPath.trim()));
         }
 
         String userHome = System.getProperty("user.home");
         if (userHome != null && !userHome.trim().isEmpty()) {
-            candidates.add(Paths.get(userHome, ".rafaelia", "license.txt"));
+            candidates.add(new File(new File(userHome, ".rafaelia"), "license.txt"));
         }
 
         String expectedHash = normalizeHash(System.getProperty("rafaelia.license.sha256"));
@@ -257,12 +253,12 @@ public final class RafaeliaCore {
             expectedHash = normalizeHash(System.getenv("RAFAELIA_LICENSE_SHA256"));
         }
 
-        for (Path path : candidates) {
-            if (path == null || !Files.isRegularFile(path)) {
+        for (File file : candidates) {
+            if (!RafaeliaCompat.isRegularFile(file)) {
                 continue;
             }
             try {
-                String content = Files.readString(path, StandardCharsets.UTF_8);
+                String content = RafaeliaCompat.readUtf8File(file);
                 LicenseRecord record = parseLicenseRecord(content);
                 if (record == null || !record.isValid()) {
                     continue;
@@ -346,21 +342,11 @@ public final class RafaeliaCore {
         }
 
         private boolean isNotExpired(String expiresAt) {
-            try {
-                OffsetDateTime expiry = OffsetDateTime.parse(expiresAt);
-                return OffsetDateTime.now(expiry.getOffset()).isBefore(expiry);
-            } catch (DateTimeParseException ex) {
-                return false;
-            }
+            return RafaeliaCompat.isCurrentTimeBefore(expiresAt);
         }
 
         private boolean isIssuedAtValid(String issuedAt) {
-            try {
-                OffsetDateTime issued = OffsetDateTime.parse(issuedAt);
-                return !OffsetDateTime.now(issued.getOffset()).isBefore(issued);
-            } catch (DateTimeParseException ex) {
-                return false;
-            }
+            return RafaeliaCompat.isCurrentTimeAtOrAfter(issuedAt);
         }
 
         private String signaturePayload() {
