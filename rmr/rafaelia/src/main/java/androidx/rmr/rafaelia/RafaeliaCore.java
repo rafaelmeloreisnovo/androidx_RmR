@@ -25,9 +25,8 @@ import java.nio.ByteOrder;
 import java.nio.Buffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -335,17 +334,21 @@ public final class RafaeliaCore {
      *
      * @return true if authorization is present
      */
-    private static boolean checkAuthorizationState() {
-        LicenseRecord record = sLicenseRecord;
-        if (record == null || !record.isValid()) {
-            return false;
+    private static boolean checkAuthorizationFile() {
+        List<File> candidates = new ArrayList<>();
+        String explicitPath = System.getProperty("rafaelia.license.path");
+        if (explicitPath != null && !explicitPath.trim().isEmpty()) {
+            candidates.add(new File(explicitPath.trim()));
         }
-        String expectedContentHash = sLicenseContentHash;
-        if (expectedContentHash != null) {
-            String actualContentHash = normalizeHash(record.contentHash);
-            if (!expectedContentHash.equals(actualContentHash)) {
-                return false;
-            }
+
+        String envPath = System.getenv("RAFAELIA_LICENSE_PATH");
+        if (envPath != null && !envPath.trim().isEmpty()) {
+            candidates.add(new File(envPath.trim()));
+        }
+
+        String userHome = System.getProperty("user.home");
+        if (userHome != null && !userHome.trim().isEmpty()) {
+            candidates.add(new File(new File(userHome, ".rafaelia"), "license.txt"));
         }
         String expectedRawSignature = sRawResourceExpectedSignature;
         if (expectedRawSignature != null) {
@@ -357,25 +360,22 @@ public final class RafaeliaCore {
         return true;
     }
 
-    @NonNull
-    private static LicenseRecord parseAndValidateLicense(
-            @NonNull String content,
-            @Nullable String expectedContentHash,
-            @Nullable String expectedSignature) {
-        LicenseRecord parsed = parseLicenseRecord(content);
-        if (parsed == null || !parsed.isValid()) {
-            throw new IllegalArgumentException("Invalid license content");
-        }
-        if (expectedContentHash != null) {
-            String actualHash = normalizeHash(parsed.contentHash);
-            if (!expectedContentHash.equals(actualHash)) {
-                throw new SecurityException("License content hash mismatch");
+        for (File file : candidates) {
+            if (!RafaeliaCompat.isRegularFile(file)) {
+                continue;
             }
-        }
-        if (expectedSignature != null) {
-            String signature = normalizeHash(parsed.getValue("signature_sha256"));
-            if (!expectedSignature.equals(signature)) {
-                throw new SecurityException("License signature mismatch");
+            try {
+                String content = RafaeliaCompat.readUtf8File(file);
+                LicenseRecord record = parseLicenseRecord(content);
+                if (record == null || !record.isValid()) {
+                    continue;
+                }
+                if (expectedHash != null && !expectedHash.equals(sha256Hex(content))) {
+                    continue;
+                }
+                return true;
+            } catch (Exception ignored) {
+                // Keep checking other candidates.
             }
         }
         return parsed;
@@ -462,21 +462,11 @@ public final class RafaeliaCore {
         }
 
         private boolean isNotExpired(String expiresAt) {
-            try {
-                OffsetDateTime expiry = OffsetDateTime.parse(expiresAt);
-                return OffsetDateTime.now(expiry.getOffset()).isBefore(expiry);
-            } catch (DateTimeParseException ex) {
-                return false;
-            }
+            return RafaeliaCompat.isCurrentTimeBefore(expiresAt);
         }
 
         private boolean isIssuedAtValid(String issuedAt) {
-            try {
-                OffsetDateTime issued = OffsetDateTime.parse(issuedAt);
-                return !OffsetDateTime.now(issued.getOffset()).isBefore(issued);
-            } catch (DateTimeParseException ex) {
-                return false;
-            }
+            return RafaeliaCompat.isCurrentTimeAtOrAfter(issuedAt);
         }
 
         private String signaturePayload() {
