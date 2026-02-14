@@ -9,10 +9,16 @@
 
 package androidx.rmr.rafaelia;
 
+import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.NotThreadSafe;
+import androidx.annotation.RawRes;
 import androidx.annotation.ThreadSafe;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -69,8 +75,15 @@ public final class RafaeliaCore {
     private static final String AUTHORIZED_USER = "Rafael Melo Reis";
     private static final boolean ENFORCE_RESTRICTIONS = true;
     private static final boolean DEBUG = Boolean.getBoolean("rafaelia.debug");
+    private static final Object LICENSE_LOCK = new Object();
     private static volatile boolean sValidated = false;
     private static volatile boolean sNativeAvailable = false;
+    @Nullable
+    private static volatile LicenseRecord sLicenseRecord = null;
+    @Nullable
+    private static volatile String sLicenseContentHash = null;
+    @Nullable
+    private static volatile String sRawResourceExpectedSignature = null;
     
     // Cache line size (64 bytes on most modern CPUs)
     private static final int CACHE_LINE_SIZE = 64;
@@ -184,8 +197,91 @@ public final class RafaeliaCore {
             // (with reduced performance)
         }
         
-        // Validate authorized usage on class load
-        validateUsage();
+    }
+
+    /**
+     * Explicitly injects a license record in memory.
+     */
+    @ThreadSafe
+    public static void injectLicense(@NonNull String content) {
+        injectLicense(content, null);
+    }
+
+    /**
+     * Explicitly injects a license record in memory with optional full-content hash check.
+     */
+    @ThreadSafe
+    public static void injectLicense(@NonNull String content, @Nullable String expectedContentSha256) {
+        String normalizedHash = normalizeHash(expectedContentSha256);
+        LicenseRecord parsed = parseAndValidateLicense(content, normalizedHash, null);
+        synchronized (LICENSE_LOCK) {
+            sLicenseRecord = parsed;
+            sLicenseContentHash = normalizedHash;
+            sRawResourceExpectedSignature = null;
+            sValidated = false;
+        }
+    }
+
+    /**
+     * Loads a license from app-internal storage.
+     */
+    @ThreadSafe
+    public static void loadLicenseFromInternalStorage(
+            @NonNull Context context,
+            @NonNull String relativePath,
+            @Nullable String expectedContentSha256) {
+        File baseDir = context.getFilesDir();
+        File candidate = new File(baseDir, relativePath);
+        try {
+            String baseCanonical = baseDir.getCanonicalPath();
+            String candidateCanonical = candidate.getCanonicalPath();
+            if (!candidateCanonical.startsWith(baseCanonical + File.separator)
+                    && !candidateCanonical.equals(baseCanonical)) {
+                throw new SecurityException("License path escapes app internal storage");
+            }
+            String content;
+            try (InputStream input = new FileInputStream(candidate)) {
+                content = readUtf8(input);
+            }
+            String normalizedHash = normalizeHash(expectedContentSha256);
+            LicenseRecord parsed = parseAndValidateLicense(content, normalizedHash, null);
+            synchronized (LICENSE_LOCK) {
+                sLicenseRecord = parsed;
+                sLicenseContentHash = normalizedHash;
+                sRawResourceExpectedSignature = null;
+                sValidated = false;
+            }
+        } catch (Exception ex) {
+            throw new SecurityException("Failed to load internal license", ex);
+        }
+    }
+
+    /**
+     * Loads a signed license from a packaged raw resource.
+     */
+    @ThreadSafe
+    public static void loadLicenseFromRawResource(
+            @NonNull Context context,
+            @RawRes int rawResId,
+            @NonNull String expectedSignatureSha256,
+            @Nullable String expectedContentSha256) {
+        String normalizedSignature = normalizeHash(expectedSignatureSha256);
+        if (normalizedSignature == null) {
+            throw new IllegalArgumentException("Expected signature hash is required");
+        }
+        try (InputStream input = context.getResources().openRawResource(rawResId)) {
+            String content = readUtf8(input);
+            String normalizedHash = normalizeHash(expectedContentSha256);
+            LicenseRecord parsed = parseAndValidateLicense(content, normalizedHash, normalizedSignature);
+            synchronized (LICENSE_LOCK) {
+                sLicenseRecord = parsed;
+                sLicenseContentHash = normalizedHash;
+                sRawResourceExpectedSignature = normalizedSignature;
+                sValidated = false;
+            }
+        } catch (Exception ex) {
+            throw new SecurityException("Failed to load raw resource license", ex);
+        }
     }
     
     /**
@@ -202,8 +298,7 @@ public final class RafaeliaCore {
         // In production, this would check cryptographic signatures,
         // environment variables, license files, etc.
         String currentUser = System.getProperty("user.name", "unknown");
-        boolean authorized = AUTHORIZED_USER.equals(currentUser) || 
-                           checkAuthorizationFile();
+        boolean authorized = AUTHORIZED_USER.equals(currentUser) || checkAuthorizationState();
         
         if (!authorized && ENFORCE_RESTRICTIONS) {
             // Log violation
@@ -228,7 +323,15 @@ public final class RafaeliaCore {
     
     /**
      * Checks for authorization file or token.
-     * 
+     *
+     * Supported path policy:
+     * - Single supported source is an explicit file path provided by
+     *   {@code -Drafaelia.license.path=<absolute-path>}.
+     * - The file is expected to live in app-internal storage (for example,
+     *   {@code Context.getFilesDir()}) to avoid runtime storage permissions.
+     * - External/shared storage and implicit fallback locations are intentionally
+     *   not supported.
+     *
      * @return true if authorization is present
      */
     private static boolean checkAuthorizationFile() {
@@ -247,11 +350,15 @@ public final class RafaeliaCore {
         if (userHome != null && !userHome.trim().isEmpty()) {
             candidates.add(new File(new File(userHome, ".rafaelia"), "license.txt"));
         }
-
-        String expectedHash = normalizeHash(System.getProperty("rafaelia.license.sha256"));
-        if (expectedHash == null) {
-            expectedHash = normalizeHash(System.getenv("RAFAELIA_LICENSE_SHA256"));
+        String expectedRawSignature = sRawResourceExpectedSignature;
+        if (expectedRawSignature != null) {
+            String signature = normalizeHash(record.getValue("signature_sha256"));
+            if (!expectedRawSignature.equals(signature)) {
+                return false;
+            }
         }
+        return true;
+    }
 
         for (File file : candidates) {
             if (!RafaeliaCompat.isRegularFile(file)) {
@@ -271,7 +378,18 @@ public final class RafaeliaCore {
                 // Keep checking other candidates.
             }
         }
-        return false;
+        return parsed;
+    }
+
+    @NonNull
+    private static String readUtf8(@NonNull InputStream inputStream) throws Exception {
+        ByteArrayOutputStream output = new ByteArrayOutputStream(1024);
+        byte[] chunk = new byte[1024];
+        int read;
+        while ((read = inputStream.read(chunk)) != -1) {
+            output.write(chunk, 0, read);
+        }
+        return new String(output.toByteArray(), StandardCharsets.UTF_8);
     }
 
     @Nullable
@@ -300,9 +418,11 @@ public final class RafaeliaCore {
 
     private static final class LicenseRecord {
         private final Map<String, String> values;
+        private final String contentHash;
 
         private LicenseRecord(Map<String, String> values) {
             this.values = values;
+            this.contentHash = createContentHash(values);
         }
 
         private boolean isValid() {
@@ -352,6 +472,28 @@ public final class RafaeliaCore {
         private String signaturePayload() {
             List<String> keys = new ArrayList<>(values.keySet());
             keys.remove("signature_sha256");
+            keys.sort(String::compareTo);
+            StringBuilder payload = new StringBuilder();
+            for (String key : keys) {
+                String value = values.get(key);
+                if (value == null) {
+                    continue;
+                }
+                if (payload.length() > 0) {
+                    payload.append('\n');
+                }
+                payload.append(key).append('=').append(value);
+            }
+            try {
+                return sha256Hex(payload.toString());
+            } catch (Exception ex) {
+                return "";
+            }
+        }
+
+        @NonNull
+        private static String createContentHash(@NonNull Map<String, String> values) {
+            List<String> keys = new ArrayList<>(values.keySet());
             keys.sort(String::compareTo);
             StringBuilder payload = new StringBuilder();
             for (String key : keys) {
