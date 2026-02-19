@@ -306,6 +306,36 @@ Java_androidx_rmr_core_RmRMatrixOps_multiplyNative(JNIEnv* env, jclass clazz,
     env->ReleaseDoubleArrayElements(resultData, result, 0); // Write results back
 }
 
+
+JNIEXPORT jint JNICALL
+Java_androidx_rmr_core_RmRHardware_nativeGetSimdLevel(JNIEnv* env, jclass clazz) {
+    static constexpr jint SIMD_NATIVE_NONE = 0;
+    static constexpr jint SIMD_NATIVE_NEON = 1;
+    static constexpr jint SIMD_NATIVE_SSE = 2;
+    static constexpr jint SIMD_NATIVE_AVX = 3;
+
+#if defined(HAS_NEON)
+    return SIMD_NATIVE_NEON;
+#elif defined(__x86_64__) || defined(__i386__)
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_cpu_supports)
+    if (__builtin_cpu_supports("avx")) {
+        return SIMD_NATIVE_AVX;
+    }
+#endif
+#endif
+#if defined(HAS_SSE2)
+    return SIMD_NATIVE_SSE;
+#else
+    return SIMD_NATIVE_NONE;
+#endif
+#elif defined(HAS_SSE2)
+    return SIMD_NATIVE_SSE;
+#else
+    return SIMD_NATIVE_NONE;
+#endif
+}
+
 /**
  * JNI_OnLoad - Called when the native library is loaded.
  * Notifies Java side that native support is available.

@@ -19,8 +19,14 @@ package androidx.rmr.core;
 import android.os.Build;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 public final class RmRHardware {
+    private static final int SIMD_NATIVE_NONE = 0;
+    private static final int SIMD_NATIVE_NEON = 1;
+    private static final int SIMD_NATIVE_SSE = 2;
+    private static final int SIMD_NATIVE_AVX = 3;
+
     private static volatile boolean sNativeAvailable;
     private static volatile boolean sTriedNativeLoad;
     private static volatile SimdLevel sCachedSimdLevel;
@@ -41,24 +47,68 @@ public final class RmRHardware {
         if (cached != null) {
             return cached;
         }
-        String[] abis = Build.SUPPORTED_ABIS;
-        if (abis != null) {
-            for (String abi : abis) {
-                if (abi == null) {
-                    continue;
-                }
-                if (abi.contains("arm64") || abi.contains("armeabi")) {
-                    return cacheSimdLevel(SimdLevel.NEON);
-                }
-                if (abi.contains("x86_64")) {
-                    return cacheSimdLevel(SimdLevel.AVX);
-                }
-                if (abi.contains("x86")) {
-                    return cacheSimdLevel(SimdLevel.SSE);
-                }
+
+        SimdLevel nativeLevel = detectSimdLevelFromNative();
+        if (nativeLevel != null) {
+            return cacheSimdLevel(nativeLevel);
+        }
+
+        return cacheSimdLevel(getSimdLevelFromAbi(Build.SUPPORTED_ABIS));
+    }
+
+    @NonNull
+    static SimdLevel getSimdLevelFromAbi(@Nullable String[] abis) {
+        if (abis == null) {
+            return SimdLevel.NONE;
+        }
+
+        for (String abi : abis) {
+            if (abi == null) {
+                continue;
+            }
+
+            if (abi.contains("arm64") || abi.contains("armeabi")) {
+                return SimdLevel.NEON;
+            }
+            if (abi.contains("x86_64")) {
+                return SimdLevel.SSE;
+            }
+            if (abi.contains("x86")) {
+                return SimdLevel.SSE;
             }
         }
-        return cacheSimdLevel(SimdLevel.NONE);
+        return SimdLevel.NONE;
+    }
+
+    @Nullable
+    private static SimdLevel detectSimdLevelFromNative() {
+        if (!ensureNativeLoaded()) {
+            return null;
+        }
+
+        try {
+            return simdLevelFromNativeValue(nativeGetSimdLevel());
+        } catch (UnsatisfiedLinkError e) {
+            sNativeAvailable = false;
+            return null;
+        }
+    }
+
+    @Nullable
+    static SimdLevel simdLevelFromNativeValue(int nativeValue) {
+        if (nativeValue == SIMD_NATIVE_AVX) {
+            return SimdLevel.AVX;
+        }
+        if (nativeValue == SIMD_NATIVE_SSE) {
+            return SimdLevel.SSE;
+        }
+        if (nativeValue == SIMD_NATIVE_NEON) {
+            return SimdLevel.NEON;
+        }
+        if (nativeValue == SIMD_NATIVE_NONE) {
+            return SimdLevel.NONE;
+        }
+        return null;
     }
 
     static boolean isNativeAvailable() {
@@ -87,6 +137,8 @@ public final class RmRHardware {
     static void setNativeAvailable(boolean available) {
         sNativeAvailable = available;
     }
+
+    private static native int nativeGetSimdLevel();
 
     @NonNull
     private static SimdLevel cacheSimdLevel(@NonNull SimdLevel level) {
