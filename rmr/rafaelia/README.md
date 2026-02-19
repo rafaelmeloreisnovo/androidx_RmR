@@ -2,16 +2,21 @@
 
 ## Overview
 
-The **Rafaelia** module is an ultra low-level, bare-metal optimization component of the RmR (Rafael Melo Reis) library suite. It provides direct hardware access, SIMD-accelerated operations, and zero-abstraction performance for critical paths in AndroidX applications.
+The **Rafaelia** module is an ultra low-level optimization component of the RmR (Rafael Melo Reis) library suite. It provides userspace CPU capability detection, SIMD-accelerated operations through compiler intrinsics, and zero-abstraction performance for critical paths in AndroidX applications.
 
 ## Key Features
 
-### 1. Bare-Metal Performance
+### 1. Low-Overhead Native Performance
 - **Direct Memory Access**: Operations on native memory outside the Java heap
 - **Zero-Copy Operations**: No intermediate allocations or copies
 - **Cache-Aligned Structures**: All data structures aligned to 64-byte cache lines
 - **SIMD Acceleration**: Automatic use of SSE/AVX (x86) or NEON (ARM) instructions
 - **Lock-Free Algorithms**: Thread-safe without mutex overhead
+
+### Technical Boundary on Android Apps
+- **Userspace-only execution**: Optimization paths run in standard Android app userspace.
+- **No bare-metal MMIO/GPIO**: Common Android apps do not have direct pin/register access for MMIO/GPIO.
+- **Portable acceleration model**: Performance comes from CPU feature detection + SIMD intrinsics, not direct peripheral register programming.
 
 ### 2. Architecture-Specific Optimizations
 - **ARM NEON**: Vectorized operations on ARM processors
@@ -19,11 +24,18 @@ The **Rafaelia** module is an ultra low-level, bare-metal optimization component
 - **CPU Feature Detection**: Automatic detection and use of available SIMD features
 - **Architecture-Tuned Code**: Separate optimizations for each target architecture
 
+### CPU Capability Detection Sources (project implementation)
+- **`getauxval(AT_HWCAP)`** on ARM/ARM64 to detect NEON/ASIMD capabilities in userspace.
+- **`__builtin_cpu_supports("...")`** on x86/x86_64 to gate AVX/SSE code paths safely at runtime.
+- **ABI fallback** from Android/runtime build targets (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`) when finer-grained runtime flags are unavailable.
+
 ### 3. No Legacy Dependencies
 - **Zero External Dependencies**: Completely self-contained implementation
 - **No AndroidX Dependencies**: Does not rely on any legacy AndroidX components
 - **Pure Native Code**: Critical paths implemented in C++20 with inline assembly where beneficial
 - **Minimal API Surface**: Only essential operations exposed
+
+This "no external dependencies" scope refers to using only the existing Android toolchain and system APIs already available in the project (NDK/Clang, libc/Bionic primitives such as `getauxval`, and compiler builtins), without adding third-party libraries.
 
 ### 4. Hardware-Accelerated Operations
 - Vector addition and multiplication with SIMD
@@ -136,7 +148,7 @@ build.gradle            - Module build configuration
 // Create Rafaelia instance with aligned memory
 RafaeliaCore core = RafaeliaCore.create(1024 * 1024); // 1MB
 
-// Get direct buffer for bare-metal operations
+// Get direct buffer for low-overhead native operations
 ByteBuffer buffer = core.getDirectMemory();
 
 // Perform SIMD-accelerated vector operations
@@ -175,7 +187,7 @@ to detect the absence of native SIMD support and fall back to safe paths.
 ## Design Principles
 
 ### 1. No Abstraction Overhead
-Every operation maps directly to hardware instructions. No virtual function calls, no intermediate objects, no runtime type checks.
+Every hot operation maps to native instructions selected in userspace after capability checks. No virtual function calls, no intermediate objects, no runtime type checks in critical paths.
 
 ### 2. Predictable Performance
 All operations have bounded, predictable execution time. No garbage collection pauses, no dynamic allocation in hot paths.

@@ -7,7 +7,23 @@ This enhancement to the RmR Core module adds hardware-aware optimizations includ
 - **CPU Architecture Detection**: Automatic detection of ARM, ARM64, x86, x86_64
 - **SIMD Acceleration**: Native implementations using ARM NEON and x86 SSE2/AVX
 - **Cache Optimization**: Cache-blocking algorithms for optimal memory access
-- **Bare-Metal Performance**: Direct hardware access with minimal overhead
+- **Low-Overhead Native Performance**: Userspace CPU capability detection plus SIMD intrinsics with minimal overhead
+
+## Technical Boundary (Android App Context)
+
+- Optimizations operate in normal Android app userspace.
+- Standard Android apps do **not** perform bare-metal MMIO/GPIO pin/register access.
+- Hardware-aware speedups here come from runtime capability detection + SIMD intrinsics, not direct peripheral register programming.
+
+## Capability Detection Sources Used in This Project
+
+- **`getauxval(AT_HWCAP)`**: used on ARM/ARM64 paths to detect NEON/ASIMD capability in userspace.
+- **`__builtin_cpu_supports("...")`**: used on x86/x86_64 paths to gate SSE/AVX code paths.
+- **ABI fallback**: architecture/ABI signals (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`) are used when runtime feature flags are unavailable.
+
+## No External Dependencies
+
+The optimization stack remains dependency-free in the third-party sense: it relies only on Android toolchain/NDK components and already-available system APIs (e.g., Bionic `getauxval`, compiler builtins, JNI/Android runtime interfaces).
 
 ## New Components
 
