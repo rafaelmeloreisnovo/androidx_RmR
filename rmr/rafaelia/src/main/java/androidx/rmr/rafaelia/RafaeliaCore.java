@@ -182,7 +182,7 @@ public final class RafaeliaCore {
     private static native void nativeVectorMultiply(long a, long b, long result, int length);
     private static native void nativeMatrixMultiply(long a, long b, long result, int rows, int inner,
             int cols);
-    private static native int nativeGetCpuFeatures();
+    private static native int nativeDetectCpuFeatures();
     private static native void nativePrefetch(long address, int hint);
     private static native long nativeGetDirectBufferAddress(@NonNull ByteBuffer buffer);
     
@@ -836,13 +836,27 @@ public final class RafaeliaCore {
     }
     
     /**
-     * Detects available CPU features for optimization.
-     * 
+     * Detects available CPU SIMD features at runtime.
+     *
+     * <p>Bit contract:
+     * <ul>
+     *   <li>bit 0: SSE</li>
+     *   <li>bit 1: SSE2</li>
+     *   <li>bit 2: SSE3</li>
+     *   <li>bit 3: SSE4.1</li>
+     *   <li>bit 4: SSE4.2</li>
+     *   <li>bit 5: AVX</li>
+     *   <li>bit 6: AVX2</li>
+     *   <li>bit 7: FMA</li>
+     *   <li>bit 8: NEON</li>
+     *   <li>bit 9: ASIMD</li>
+     * </ul>
+     *
      * @return bit mask of available features, or {@code 0} if native is unavailable
      */
     @ThreadSafe
     public static int getCpuFeatures() {
-        return sNativeAvailable ? nativeGetCpuFeatures() : 0;
+        return sNativeAvailable ? nativeDetectCpuFeatures() : 0;
     }
 
     private static void debugCheckExclusiveMemoryCopy(
@@ -883,7 +897,8 @@ public final class RafaeliaCore {
         public static final int AVX = 1 << 5;
         public static final int AVX2 = 1 << 6;
         public static final int FMA = 1 << 7;
-        public static final int NEON = 1 << 8; // ARM NEON
+        public static final int NEON = 1 << 8;
+        public static final int ASIMD = 1 << 9;
         
         private CpuFeatures() {}
     }
