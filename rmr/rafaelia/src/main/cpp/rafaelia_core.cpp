@@ -42,6 +42,8 @@
 #define CACHE_LINE_SIZE 64
 #define ALIGN_TO_CACHE_LINE __attribute__((aligned(CACHE_LINE_SIZE)))
 
+extern "C" jint RafaeliaDetectCpuFeatures();
+
 extern "C" {
 
 namespace {
@@ -569,7 +571,7 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeDetectCpuFeatures(
         JNIEnv* env, jclass clazz) {
     (void)env;
     (void)clazz;
-    return RafaeliaDetectCpuFeaturesRuntime();
+    return RafaeliaDetectCpuFeatures();
 }
 
 /**

@@ -23,14 +23,12 @@ constexpr jint kCpuFeatureAvx = 1 << 5;
 constexpr jint kCpuFeatureAvx2 = 1 << 6;
 constexpr jint kCpuFeatureFma = 1 << 7;
 constexpr jint kCpuFeatureNeon = 1 << 8;
-constexpr jint kCpuFeatureAsimd = 1 << 9;
 
-}  // namespace
-
-extern "C" jint RafaeliaDetectCpuFeaturesRuntime() {
+jint DetectCpuFeaturesRuntime() {
     jint features = 0;
 
-#if (defined(__x86_64__) || defined(__i386__))
+#if defined(__x86_64__) || defined(__i386__)
+    __builtin_cpu_init();
     if (__builtin_cpu_supports("sse")) {
         features |= kCpuFeatureSse;
     }
@@ -55,29 +53,30 @@ extern "C" jint RafaeliaDetectCpuFeaturesRuntime() {
     if (__builtin_cpu_supports("fma")) {
         features |= kCpuFeatureFma;
     }
-    return features;
-#elif defined(__linux__) && (defined(__aarch64__) || defined(__arm__))
-    unsigned long hwcap = getauxval(AT_HWCAP);
-    unsigned long hwcap2 = getauxval(AT_HWCAP2);
-
+#elif defined(__aarch64__) || defined(__arm__)
+#if defined(__linux__)
+    unsigned long caps = getauxval(AT_HWCAP);
 #if defined(__aarch64__)
-    (void)hwcap2;
-    if ((hwcap & HWCAP_ASIMD) != 0) {
-        features |= kCpuFeatureAsimd;
+    if ((caps & HWCAP_ASIMD) != 0) {
         features |= kCpuFeatureNeon;
     }
 #else
-    if ((hwcap & HWCAP_NEON) != 0) {
+    if ((caps & HWCAP_NEON) != 0) {
         features |= kCpuFeatureNeon;
     }
-    #if defined(HWCAP2_ASIMD)
-    if ((hwcap2 & HWCAP2_ASIMD) != 0) {
-        features |= kCpuFeatureAsimd;
-    }
-    #endif
 #endif
+#endif
+#endif
+
     return features;
-#else
-    return 0;
-#endif
 }
+
+}  // namespace
+
+extern "C" jint RafaeliaDetectCpuFeatures() {
+    static const jint cachedFeatures = DetectCpuFeaturesRuntime();
+    return cachedFeatures;
+}
+
+// CPU detection implementation
+// Detects available SIMD instruction sets
