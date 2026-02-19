@@ -5,5 +5,79 @@
 
 #include <jni.h>
 
-// CPU detection implementation
-// Detects available SIMD instruction sets
+#if defined(__linux__)
+    #include <sys/auxv.h>
+    #if defined(__aarch64__) || defined(__arm__)
+        #include <asm/hwcap.h>
+    #endif
+#endif
+
+namespace {
+
+constexpr jint kCpuFeatureSse = 1 << 0;
+constexpr jint kCpuFeatureSse2 = 1 << 1;
+constexpr jint kCpuFeatureSse3 = 1 << 2;
+constexpr jint kCpuFeatureSse41 = 1 << 3;
+constexpr jint kCpuFeatureSse42 = 1 << 4;
+constexpr jint kCpuFeatureAvx = 1 << 5;
+constexpr jint kCpuFeatureAvx2 = 1 << 6;
+constexpr jint kCpuFeatureFma = 1 << 7;
+constexpr jint kCpuFeatureNeon = 1 << 8;
+constexpr jint kCpuFeatureAsimd = 1 << 9;
+
+}  // namespace
+
+extern "C" jint RafaeliaDetectCpuFeaturesRuntime() {
+    jint features = 0;
+
+#if (defined(__x86_64__) || defined(__i386__))
+    if (__builtin_cpu_supports("sse")) {
+        features |= kCpuFeatureSse;
+    }
+    if (__builtin_cpu_supports("sse2")) {
+        features |= kCpuFeatureSse2;
+    }
+    if (__builtin_cpu_supports("sse3")) {
+        features |= kCpuFeatureSse3;
+    }
+    if (__builtin_cpu_supports("sse4.1")) {
+        features |= kCpuFeatureSse41;
+    }
+    if (__builtin_cpu_supports("sse4.2")) {
+        features |= kCpuFeatureSse42;
+    }
+    if (__builtin_cpu_supports("avx")) {
+        features |= kCpuFeatureAvx;
+    }
+    if (__builtin_cpu_supports("avx2")) {
+        features |= kCpuFeatureAvx2;
+    }
+    if (__builtin_cpu_supports("fma")) {
+        features |= kCpuFeatureFma;
+    }
+    return features;
+#elif defined(__linux__) && (defined(__aarch64__) || defined(__arm__))
+    unsigned long hwcap = getauxval(AT_HWCAP);
+    unsigned long hwcap2 = getauxval(AT_HWCAP2);
+
+#if defined(__aarch64__)
+    (void)hwcap2;
+    if ((hwcap & HWCAP_ASIMD) != 0) {
+        features |= kCpuFeatureAsimd;
+        features |= kCpuFeatureNeon;
+    }
+#else
+    if ((hwcap & HWCAP_NEON) != 0) {
+        features |= kCpuFeatureNeon;
+    }
+    #if defined(HWCAP2_ASIMD)
+    if ((hwcap2 & HWCAP2_ASIMD) != 0) {
+        features |= kCpuFeatureAsimd;
+    }
+    #endif
+#endif
+    return features;
+#else
+    return 0;
+#endif
+}

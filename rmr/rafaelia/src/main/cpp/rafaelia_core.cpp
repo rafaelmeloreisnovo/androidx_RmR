@@ -562,31 +562,14 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMatrixMultiply(
  * Get available CPU features.
  * Returns bitmask of supported SIMD instructions.
  */
+extern jint RafaeliaDetectCpuFeaturesRuntime();
+
 JNIEXPORT jint JNICALL
-Java_androidx_rmr_rafaelia_RafaeliaCore_nativeGetCpuFeatures(
+Java_androidx_rmr_rafaelia_RafaeliaCore_nativeDetectCpuFeatures(
         JNIEnv* env, jclass clazz) {
-    
-    jint features = 0;
-    
-    #ifdef HAVE_SSE
-        features |= (1 << 0); // SSE
-        features |= (1 << 1); // SSE2
-        features |= (1 << 2); // SSE3
-        features |= (1 << 3); // SSE4.1
-        features |= (1 << 4); // SSE4.2
-    #endif
-    
-    #ifdef HAVE_AVX2
-        features |= (1 << 5); // AVX
-        features |= (1 << 6); // AVX2
-        features |= (1 << 7); // FMA
-    #endif
-    
-    #ifdef HAVE_NEON
-        features |= (1 << 8); // NEON
-    #endif
-    
-    return features;
+    (void)env;
+    (void)clazz;
+    return RafaeliaDetectCpuFeaturesRuntime();
 }
 
 /**
