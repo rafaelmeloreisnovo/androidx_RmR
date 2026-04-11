@@ -108,20 +108,39 @@ fi
 
 # Tests for lint checks default to using sdk defined by this variable. This removes a lot of
 # setup from each lint module.
-export ANDROID_HOME="$APP_HOME/../../prebuilts/fullsdk-$plat"
-# override JAVA_HOME, because CI machines have it and it points to very old JDK
-export ANDROIDX_JDK21="$APP_HOME/../../prebuilts/jdk/jdk21/$plat-$platform_suffix"
-export JAVA_HOME=$ANDROIDX_JDK21
-export STUDIO_GRADLE_JDK=$JAVA_HOME
+ANDROIDX_PREBUILT_SDK="$APP_HOME/../../prebuilts/fullsdk-$plat"
+if [ -d "$ANDROIDX_PREBUILT_SDK" ]; then
+    export ANDROID_HOME="$ANDROIDX_PREBUILT_SDK"
+fi
 
-# Warn developers if they try to build top level project without the full checkout
-[ ! -d "$JAVA_HOME" ] && echo "Failed to find: $JAVA_HOME
+# Prefer the prebuilt JDK from full AndroidX checkout, but gracefully fallback for standalone
+# GitHub checkouts where contributors must provide JAVA_HOME/ANDROID_SDK_ROOT.
+ORIGINAL_JAVA_HOME="${JAVA_HOME:-}"
+export ANDROIDX_JDK21="$APP_HOME/../../prebuilts/jdk/jdk21/$plat-$platform_suffix"
+if [ -d "$ANDROIDX_JDK21" ]; then
+    export JAVA_HOME="$ANDROIDX_JDK21"
+    export STUDIO_GRADLE_JDK="$JAVA_HOME"
+elif [ -n "$ORIGINAL_JAVA_HOME" ] && [ -d "$ORIGINAL_JAVA_HOME" ]; then
+    export JAVA_HOME="$ORIGINAL_JAVA_HOME"
+    export STUDIO_GRADLE_JDK="$JAVA_HOME"
+    JAVA_VERSION_STR="$("$JAVA_HOME/bin/java" -version 2>&1 | head -n 1)"
+    if [[ ! "$JAVA_VERSION_STR" =~ \"21([.][0-9]+)? ]]; then
+        echo "JAVA_HOME must point to JDK 21 for standalone checkouts."
+        echo "Current JAVA_HOME: $JAVA_HOME"
+        echo "Detected version: $JAVA_VERSION_STR"
+        exit -1
+    fi
+    echo "Using JAVA_HOME from environment: $JAVA_HOME" >&2
+else
+    echo "Failed to find: $ANDROIDX_JDK21
 
 Typically, this means either:
-1. You are using the standalone AndroidX checkout, e.g. GitHub, which only supports
-   building a subset of projects. See CONTRIBUTING.md for details.
+1. You are using the standalone AndroidX checkout, e.g. GitHub.
+   In this case, set JAVA_HOME to a valid JDK 21 installation.
 2. You are using the repo checkout, but the last repo sync failed. Use repo status
-   to check for projects which are partially-synced, e.g. showing ***NO BRANCH***." && exit -1
+   to check for projects which are partially-synced, e.g. showing ***NO BRANCH***." >&2
+    exit -1
+fi
 
 # Creates/overwrites local.properties with sdk.dir and cmake.dir to avoid invalidating configuration cache
 $APP_HOME/development/write_sdk_path.sh
