@@ -1337,6 +1337,7 @@ includeProject(":placeholder-tests")
 
 // RmR (Rafael Melo Reis) Module - Optimized matrix-based AndroidX utilities
 includeProject(":rmr:rmr-core", [BuildType.MAIN])
+includeProject(":rmr:rmr-extensions", [BuildType.MAIN])
 includeProject(":rmr:rmr-lifecycle", [BuildType.MAIN, BuildType.FLAN])
 includeProject(":rmr:rmr-navigation", [BuildType.MAIN, BuildType.FLAN])
 includeProject(":rmr:rmr-preference", [BuildType.MAIN])
