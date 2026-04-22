@@ -1,0 +1,58 @@
+name: RmR Native CI
+
+on:
+  pull_request:
+    paths:
+      - "rmr/**"
+      - ".github/workflows/rmr-native-ci.yml"
+  push:
+    branches: [ "main" ]
+    paths:
+      - "rmr/**"
+      - ".github/workflows/rmr-native-ci.yml"
+  workflow_dispatch:
+    inputs:
+      native_abis:
+        description: "Comma-separated ABIs for native modules"
+        required: false
+        default: "arm64-v8a"
+
+jobs:
+  build-rmr:
+    runs-on: ubuntu-latest
+    env:
+      ORG_GRADLE_PROJECT_rmrNativeAbis: ${{ inputs.native_abis || 'arm64-v8a' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Assemble RmR artifacts
+        run: |
+          ./gradlew --stacktrace --no-daemon \
+            :rmr:rmr-core:assembleRelease \
+            :rmr:rafaelia:assembleRelease \
+            :rmr:rafaelia-core:assembleRelease \
+            :rmr:rmr-room:assembleRelease \
+            :rmr:rmr-navigation:assembleRelease \
+            :rmr:rmr-lifecycle:assembleRelease \
+            :rmr:rmr-preference:assembleRelease
+
+      - name: Upload AAR artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rmr-aars-${{ github.run_id }}
+          if-no-files-found: error
+          path: |
+            rmr/**/build/outputs/aar/*.aar

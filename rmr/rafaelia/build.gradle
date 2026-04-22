@@ -35,6 +35,10 @@ android {
 
     def fastMathEnabled = project.findProperty("rmrFastMath")?.toString()?.toBoolean() ?: false
     def mathFlag = fastMathEnabled ? "-ffast-math" : "-fno-fast-math"
+    def configuredAbis = (project.findProperty("rmrNativeAbis")?.toString() ?: "arm64-v8a")
+            .split(',')
+            .collect { it.trim() }
+            .findAll { !it.isEmpty() }
     
     // Enable native code compilation for bare-metal performance
     externalNativeBuild {
@@ -47,9 +51,9 @@ android {
     defaultConfig {
         consumerProguardFiles "consumer-proguard-rules.pro"
         testInstrumentationRunner = "androidx.benchmark.junit4.AndroidBenchmarkRunner"
-        // Build for all major architectures with maximum optimization
+        // Build for arm64 by default; opt-in extra ABIs via -PrmrNativeAbis=arm64-v8a,x86_64
         ndk {
-            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+            abiFilters.addAll(configuredAbis)
         }
         
         externalNativeBuild {
