@@ -181,6 +181,7 @@ The RmR library is organized into specialized modules:
 
 ### Core Modules
 - **rmr-core**: Base matrix operations and state management (Java implementation)
+- **rmr-extensions**: Isolated extension APIs in `rmr.*` namespace (`rmr.core.extensions`)
 - **rmr-lifecycle**: Optimized lifecycle state management
 - **rmr-navigation**: Matrix-based navigation state tracking
 - **rmr-preference**: Cache-optimized preference storage

@@ -214,6 +214,18 @@ Armazenamento de chave-valor otimizado através de índices matriciais ao invés
 ### Integração com Room
 Estados de queries de banco de dados rastreados através de representações matriciais para otimização de cache.
 
+## Build e CI nativa (arm64 por padrão)
+
+- O pipeline oficial `RmR Native CI` compila os módulos RmR e publica AARs como artefatos de workflow.
+- Para manter coerência com Android/NDK atuais, a ABI padrão é `arm64-v8a`.
+- Para validação interna com ABIs adicionais, use `-PrmrNativeAbis=arm64-v8a,x86_64` (ou defina `RMR_NATIVE_ABIS` no script local).
+
+Comando local recomendado:
+
+```bash
+rmr/scripts/build_rmr_release.sh
+```
+
 ## Licença
 
 Para autoria, atribuição e separação entre o AndroidX original e o módulo RmR, consulte:
