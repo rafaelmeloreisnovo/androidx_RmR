@@ -21,7 +21,7 @@ plugins {
 }
 
 android {
-    namespace "androidx.rmr.preference"
+    namespace = "androidx.rmr.preference"
 }
 
 dependencies {

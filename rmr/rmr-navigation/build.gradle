@@ -21,7 +21,7 @@ plugins {
 }
 
 android {
-    namespace "androidx.rmr.navigation"
+    namespace = "androidx.rmr.navigation"
 }
 
 dependencies {

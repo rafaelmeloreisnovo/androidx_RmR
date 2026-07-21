@@ -21,7 +21,7 @@ plugins {
 }
 
 android {
-    namespace "androidx.rmr.room"
+    namespace = "androidx.rmr.room"
 
     defaultConfig {
         consumerProguardFiles "consumer-proguard-rules.pro"
