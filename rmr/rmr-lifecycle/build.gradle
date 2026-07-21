@@ -21,7 +21,7 @@ plugins {
 }
 
 android {
-    namespace "androidx.rmr.lifecycle"
+    namespace = "androidx.rmr.lifecycle"
 }
 
 dependencies {

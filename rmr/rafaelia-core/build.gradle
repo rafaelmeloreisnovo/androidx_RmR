@@ -21,7 +21,7 @@ plugins {
 }
 
 android {
-    namespace "androidx.rmr.rafaelia.core"
+    namespace = "androidx.rmr.rafaelia.core"
 
     defaultConfig {
         consumerProguardFiles "consumer-proguard-rules.pro"
