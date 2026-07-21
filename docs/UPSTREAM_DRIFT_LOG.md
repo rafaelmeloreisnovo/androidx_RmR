@@ -39,6 +39,13 @@ git push origin androidx-main
 
 Apos cada sync, atualizar a tabela acima com a data e o commit HEAD do upstream.
 
+## Alteracoes fork-exclusivas aplicadas apos ultimo sync
+
+| Data | Commit | Descricao |
+|------|--------|-----------|
+| 2026-07-21 | `d1c105d9` | docs: CONTRIBUTING e UPSTREAM_DRIFT_LOG (fecha AX1, AX3) |
+| 2026-07-21 | `6a4bf3a4` | fix: namespace assignment syntax em todos os rmr/*/build.gradle (validateAndroidDsl) |
+
 ## Politica de drift aceitavel
 
 - Drift < 30 dias: aceitavel para modulos nao criticos
