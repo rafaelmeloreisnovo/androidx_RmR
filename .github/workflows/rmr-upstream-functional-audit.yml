@@ -107,8 +107,8 @@ jobs:
           test -d "${android_sdk_root}/cmake/3.18.1"
           # Keep sdkmanager and Gradle's local.properties generator on the
           # exact same SDK root instead of relying on a runner-image alias.
-          printf 'ANDROID_SDK_ROOT=%s\\n' "${android_sdk_root}" >> "${GITHUB_ENV}"
-          printf 'ANDROID_HOME=%s\\n' "${android_sdk_root}" >> "${GITHUB_ENV}"
+          printf 'ANDROID_SDK_ROOT=%s\n' "${android_sdk_root}" >> "${GITHUB_ENV}"
+          printf 'ANDROID_HOME=%s\n' "${android_sdk_root}" >> "${GITHUB_ENV}"
           printf 'ANDROID_NDK_HOME=%s\n' "${ndk_root}" >> "${GITHUB_ENV}"
           printf 'ANDROID_NDK_ROOT=%s\n' "${ndk_root}" >> "${GITHUB_ENV}"
 
