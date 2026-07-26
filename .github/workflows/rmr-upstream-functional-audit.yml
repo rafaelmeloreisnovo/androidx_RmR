@@ -40,7 +40,9 @@ permissions:
 
 concurrency:
   group: rmr-upstream-functional-audit-${{ github.ref }}
-  cancel-in-progress: false
+  # Superseded PR heads must not consume the evidence lane; scheduled and push
+  # audits remain non-destructive.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   audit-build-and-test:
