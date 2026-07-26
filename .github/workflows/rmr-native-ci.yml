@@ -29,6 +29,9 @@ jobs:
       ALLOW_PUBLIC_REPOS: "true"
       # Avoid the Google-internal AndroidX remote build cache on public runners.
       USE_ANDROIDX_REMOTE_BUILD_CACHE: "false"
+      # Source-supported partial-tree mode: missing sibling projects stay visible
+      # in the CI receipt and do not satisfy RmR dependency resolution.
+      ALLOW_MISSING_PROJECTS: "true"
       # Keep this CI scoped to RmR instead of the full AOSP multi-repo checkout.
       PROJECT_PREFIX: ":rmr"
     steps:
@@ -47,6 +50,16 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Record partial AndroidX checkout topology
+        shell: bash
+        run: |
+          set -euo pipefail
+          external_icing="absent"
+          if [[ -d "${GITHUB_WORKSPACE}/../../external/icing" ]]; then
+            external_icing="present"
+          fi
+          printf '{"aosp_external_icing":"%s","allow_missing_projects":"true","project_prefix":":rmr"}\n' "${external_icing}" > "${RUNNER_TEMP}/rmr-ci-environment.json"
+
       - name: Assemble RmR artifacts within hosted-runner resource bounds
         run: |
           bash rmr/scripts/build_rmr_release.sh
@@ -58,3 +71,4 @@ jobs:
           if-no-files-found: error
           path: |
             rmr/**/build/outputs/aar/*.aar
+            ${{ runner.temp }}/rmr-ci-environment.json
