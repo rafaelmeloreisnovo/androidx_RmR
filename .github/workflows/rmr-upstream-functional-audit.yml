@@ -76,6 +76,8 @@ jobs:
           set -euo pipefail
           mkdir -p "${RUNNER_TEMP}/rmr-upstream-audit"
           printf 'AUDIT_DIR=%s\n' "${RUNNER_TEMP}/rmr-upstream-audit" >> "${GITHUB_ENV}"
+          # AndroidX writes module outputs outside the checked-out source tree.
+          printf 'RMR_BUILD_OUTPUT_ROOT=%s\n' "${RUNNER_WORKSPACE}/out/androidx/rmr" >> "${GITHUB_ENV}"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -146,9 +148,20 @@ jobs:
         run: |
           bash rmr/scripts/build_rmr_release.sh
 
+      - name: Verify and inventory release AARs
+        id: aar_inventory
+        if: ${{ steps.build_rmr.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d "${RMR_BUILD_OUTPUT_ROOT}"
+          find "${RMR_BUILD_OUTPUT_ROOT}" -type f -path "*/build/outputs/aar/*.aar" -print | sort | tee "${AUDIT_DIR}/rmr_release_aars.txt"
+          test -s "${AUDIT_DIR}/rmr_release_aars.txt"
+
       - name: Execute the documented RmR unit-test entrypoints
         id: rmr_tests
-        if: ${{ steps.build_rmr.outcome == 'success' }}
+        if: ${{ steps.build_rmr.outcome == 'success' && steps.aar_inventory.outcome == 'success' }}
         continue-on-error: true
         run: |
           ./gradlew --stacktrace --no-daemon \
@@ -161,13 +174,13 @@ jobs:
       - name: Record release and test observations in the audit
         if: always()
         env:
-          BUILD_OBSERVATION: ${{ steps.build_rmr.outcome == 'success' && 'PASSED' || 'FAILED' }}
+          BUILD_OBSERVATION: ${{ steps.build_rmr.outcome == 'success' && steps.aar_inventory.outcome == 'success' && 'PASSED' || 'FAILED' }}
           TEST_OBSERVATION: ${{ steps.rmr_tests.outcome == 'success' && 'PASSED' || steps.rmr_tests.outcome == 'failure' && 'FAILED' || 'TOKEN_VAZIO' }}
         run: |
           python3 rmr/scripts/audit_androidx_upstream.py \
             --upstream-ref "${UPSTREAM_REF}" \
             --skip-fetch \
-            --artifact-root rmr \
+            --artifact-root "${RMR_BUILD_OUTPUT_ROOT}" \
             --out-dir "${AUDIT_DIR}" \
             --observation rmr_release_aar_build="${BUILD_OBSERVATION}" \
             --observation rmr_core_tests="${TEST_OBSERVATION}" \
@@ -183,11 +196,11 @@ jobs:
             --skip-fetch \
             --enforce-boundary \
             --fail-on-whitespace \
-            --artifact-root rmr \
+            --artifact-root "${RMR_BUILD_OUTPUT_ROOT}" \
             --out-dir "${AUDIT_DIR}/policy"
 
       - name: Fail closed when functional proof or policy gate is incomplete
-        if: ${{ steps.build_rmr.outcome != 'success' || steps.rmr_tests.outcome != 'success' || steps.boundary_policy.outcome != 'success' }}
+        if: ${{ steps.build_rmr.outcome != 'success' || steps.aar_inventory.outcome != 'success' || steps.rmr_tests.outcome != 'success' || steps.boundary_policy.outcome != 'success' }}
         run: |
           echo "RmR functional evidence or upstream-boundary policy is incomplete; inspect the uploaded audit artifact."
           exit 1
@@ -199,6 +212,6 @@ jobs:
           name: rmr-upstream-functional-audit-${{ github.sha }}
           path: |
             ${{ runner.temp }}/rmr-upstream-audit/
-            rmr/**/build/outputs/aar/*.aar
+            ${{ runner.workspace }}/out/androidx/rmr/**/build/outputs/aar/*.aar
           if-no-files-found: warn
           retention-days: 30
