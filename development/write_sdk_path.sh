@@ -51,7 +51,14 @@ if [[ -d "$REPO_ROOT/prebuilts" && -d "$REPO_ROOT/frameworks/support" && "$platf
   [[ -d "$REPO_ROOT/prebuilts/fullsdk-$platform" ]] || err "Expected SDK at: $REPO_ROOT/prebuilts/fullsdk-$platform"
 else
   sdk_dir="$(env_sdk)"
-  cmake_dir="$sdk_dir/native-build-tools"
+  # Standalone/public CI may provide a side-by-side CMake version. Keep the
+  # full-checkout native-build-tools path above unchanged.
+  if [[ -n "${ANDROID_CMAKE_VERSION:-}" ]]; then
+    cmake_dir="$sdk_dir/cmake/${ANDROID_CMAKE_VERSION}"
+    [[ -x "$cmake_dir/bin/cmake" ]] || err "Expected CMake at: $cmake_dir"
+  else
+    cmake_dir="$sdk_dir/native-build-tools"
+  fi
 fi
 
 {
