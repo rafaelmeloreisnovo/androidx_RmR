@@ -24,6 +24,11 @@ jobs:
       ORG_GRADLE_PROJECT_rmrNativeAbis: ${{ inputs.native_abis || 'arm64-v8a' }}
       RMR_GRADLE_JVM_ARGS: "-Xms1g -Xmx5g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
       RMR_GRADLE_WORKERS: "2"
+      # Public CI has no AndroidX prebuilts checkout, so enable only the
+      # repositories explicitly permitted by settings.gradle.
+      ALLOW_PUBLIC_REPOS: "true"
+      # Avoid the Google-internal AndroidX remote build cache on public runners.
+      USE_ANDROIDX_REMOTE_BUILD_CACHE: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
