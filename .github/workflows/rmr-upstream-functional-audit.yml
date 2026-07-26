@@ -11,7 +11,7 @@ on:
       - "settings.gradle"
       - "settings.gradle.kts"
   push:
-    branches: ["androidx-main"]
+    branches: ["**"]
     paths:
       - "rmr/**"
       - "docs/RMR_*.md"
