@@ -24,7 +24,6 @@ import java.nio.Buffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -547,6 +546,7 @@ public final class RafaeliaCore {
      * @param sizeBytes size of memory to allocate
      * @return new instance
      * @throws SecurityException if usage is not authorized
+     * @throws IllegalArgumentException if the requested size is negative or cannot be aligned
      */
     @NonNull
     public static RafaeliaCore create(int sizeBytes) {
@@ -562,12 +562,23 @@ public final class RafaeliaCore {
      * @param sizeBytes size of memory to allocate
      */
     private RafaeliaCore(int sizeBytes) {
-        // Align size to cache line boundary
-        int alignedSize = ((sizeBytes + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
-        
+        int alignedSize = alignSizeToCacheLine(sizeBytes);
+
         // Allocate direct memory (outside Java heap)
         mDirectMemory = ByteBuffer.allocateDirect(alignedSize);
         mDirectMemory.order(ByteOrder.nativeOrder()); // Use native byte order for performance
+    }
+
+    private static int alignSizeToCacheLine(int sizeBytes) {
+        if (sizeBytes < 0) {
+            throw new IllegalArgumentException("Size must be non-negative");
+        }
+        long alignedSize =
+                ((long) sizeBytes + CACHE_LINE_SIZE - 1L) / CACHE_LINE_SIZE * CACHE_LINE_SIZE;
+        if (alignedSize > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Size is too large after cache-line alignment");
+        }
+        return (int) alignedSize;
     }
     
     /**
@@ -613,6 +624,9 @@ public final class RafaeliaCore {
         long dstEnd = (long) dstOffset + (long) length;
         if (srcEnd > src.capacity() || dstEnd > dst.capacity()) {
             throw new IndexOutOfBoundsException("Copy would exceed buffer bounds");
+        }
+        if (length > 0 && dst.isReadOnly()) {
+            throw new IllegalArgumentException("Destination buffer is read-only");
         }
         debugCheckExclusiveMemoryCopy(src, srcOffset, dst, dstOffset, length);
         if (length == 0) {
@@ -834,9 +848,6 @@ public final class RafaeliaCore {
             int length) {
         if (!DEBUG) {
             return;
-        }
-        if (dst.isReadOnly()) {
-            throw new IllegalArgumentException("Destination buffer is read-only");
         }
         if (length == 0 || src != dst) {
             return;
