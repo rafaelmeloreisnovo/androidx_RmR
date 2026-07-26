@@ -322,33 +322,22 @@ public final class RafaeliaCore {
     }
     
     /**
-     * Checks for authorization file or token.
+     * Checks the loaded authorization record without discovering implicit
+     * files or environment paths at use time.
      *
-     * Supported path policy:
-     * - Single supported source is an explicit file path provided by
-     *   {@code -Drafaelia.license.path=<absolute-path>}.
-     * - The file is expected to live in app-internal storage (for example,
-     *   {@code Context.getFilesDir()}) to avoid runtime storage permissions.
-     * - External/shared storage and implicit fallback locations are intentionally
-     *   not supported.
-     *
-     * @return true if authorization is present
+     * @return true only for a record that has already passed validation
      */
-    private static boolean checkAuthorizationFile() {
-        List<File> candidates = new ArrayList<>();
-        String explicitPath = System.getProperty("rafaelia.license.path");
-        if (explicitPath != null && !explicitPath.trim().isEmpty()) {
-            candidates.add(new File(explicitPath.trim()));
+    private static boolean checkAuthorizationState() {
+        LicenseRecord record = sLicenseRecord;
+        if (record == null || !record.isValid()) {
+            return false;
         }
-
-        String envPath = System.getenv("RAFAELIA_LICENSE_PATH");
-        if (envPath != null && !envPath.trim().isEmpty()) {
-            candidates.add(new File(envPath.trim()));
-        }
-
-        String userHome = System.getProperty("user.home");
-        if (userHome != null && !userHome.trim().isEmpty()) {
-            candidates.add(new File(new File(userHome, ".rafaelia"), "license.txt"));
+        String expectedContentHash = sLicenseContentHash;
+        if (expectedContentHash != null) {
+            String actualContentHash = normalizeHash(record.contentHash);
+            if (!expectedContentHash.equals(actualContentHash)) {
+                return false;
+            }
         }
         String expectedRawSignature = sRawResourceExpectedSignature;
         if (expectedRawSignature != null) {
@@ -360,22 +349,25 @@ public final class RafaeliaCore {
         return true;
     }
 
-        for (File file : candidates) {
-            if (!RafaeliaCompat.isRegularFile(file)) {
-                continue;
+    @NonNull
+    private static LicenseRecord parseAndValidateLicense(
+            @NonNull String content,
+            @Nullable String expectedContentHash,
+            @Nullable String expectedSignature) {
+        LicenseRecord parsed = parseLicenseRecord(content);
+        if (parsed == null || !parsed.isValid()) {
+            throw new IllegalArgumentException("Invalid license content");
+        }
+        if (expectedContentHash != null) {
+            String actualHash = normalizeHash(parsed.contentHash);
+            if (!expectedContentHash.equals(actualHash)) {
+                throw new SecurityException("License content hash mismatch");
             }
-            try {
-                String content = RafaeliaCompat.readUtf8File(file);
-                LicenseRecord record = parseLicenseRecord(content);
-                if (record == null || !record.isValid()) {
-                    continue;
-                }
-                if (expectedHash != null && !expectedHash.equals(sha256Hex(content))) {
-                    continue;
-                }
-                return true;
-            } catch (Exception ignored) {
-                // Keep checking other candidates.
+        }
+        if (expectedSignature != null) {
+            String signature = normalizeHash(parsed.getValue("signature_sha256"));
+            if (!expectedSignature.equals(signature)) {
+                throw new SecurityException("License signature mismatch");
             }
         }
         return parsed;
