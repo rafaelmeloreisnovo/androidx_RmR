@@ -6,7 +6,7 @@ on:
       - "rmr/**"
       - ".github/workflows/rmr-native-ci.yml"
   push:
-    branches: [ "main" ]
+    branches: [ "androidx-main" ]
     paths:
       - "rmr/**"
       - ".github/workflows/rmr-native-ci.yml"
