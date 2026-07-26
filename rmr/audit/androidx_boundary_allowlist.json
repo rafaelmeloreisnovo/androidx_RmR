@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "pattern": "rmr/**",
+      "classification": "fork_owned_rmr",
+      "rationale": "RmR is the declared fork-owned namespace; source and policy changes remain subject to ordinary review."
+    },
+    {
+      "pattern": "docs/RMR_*.md",
+      "classification": "rmr_governance",
+      "rationale": "RmR-specific operational contracts and contribution guidance are governance artefacts."
+    },
+    {
+      "pattern": "docs/UPSTREAM_DRIFT_LOG.md",
+      "classification": "rmr_governance",
+      "rationale": "The checked-in upstream drift log is part of the RmR audit record."
+    },
+    {
+      "pattern": ".github/workflows/rmr-*.yml",
+      "classification": "rmr_ci_governance",
+      "rationale": "Only RmR-namespaced CI workflows are permitted outside the RmR source namespace."
+    },
+    {
+      "pattern": ".github/workflows/rmr-*.yaml",
+      "classification": "rmr_ci_governance",
+      "rationale": "Only RmR-namespaced CI workflows are permitted outside the RmR source namespace."
+    },
+    {
+      "pattern": "settings.gradle",
+      "classification": "rmr_project_registration",
+      "rationale": "RmR Gradle project registration is the only permitted shared build-graph surface.",
+      "review_required": true
+    },
+    {
+      "pattern": "settings.gradle.kts",
+      "classification": "rmr_project_registration",
+      "rationale": "RmR Gradle project registration is the only permitted shared build-graph surface.",
+      "review_required": true
+    }
+  ]
+}
