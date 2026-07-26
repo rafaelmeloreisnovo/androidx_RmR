@@ -99,11 +99,21 @@ jobs:
         run: |
           bash rmr/scripts/build_rmr_release.sh
 
+      - name: Verify and inventory release AARs
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_root="${RUNNER_WORKSPACE}/out/androidx/rmr"
+          test -d "${output_root}"
+          find "${output_root}" -type f -path "*/build/outputs/aar/*.aar" -print | sort | tee "${RUNNER_TEMP}/rmr-aar-inventory.txt"
+          test -s "${RUNNER_TEMP}/rmr-aar-inventory.txt"
+
       - name: Upload AAR artifacts
         uses: actions/upload-artifact@v4
         with:
           name: rmr-aars-${{ github.run_id }}
           if-no-files-found: error
           path: |
-            rmr/**/build/outputs/aar/*.aar
+            ${{ runner.workspace }}/out/androidx/rmr/**/build/outputs/aar/*.aar
+            ${{ runner.temp }}/rmr-aar-inventory.txt
             ${{ runner.temp }}/rmr-ci-environment.json
