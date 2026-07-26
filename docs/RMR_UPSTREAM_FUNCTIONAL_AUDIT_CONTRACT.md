@@ -32,6 +32,11 @@ Hosted CI supplies a bounded Gradle JVM (`-Xms1g -Xmx5g`) and two workers throug
 environment variables. This avoids treating a workstation-sized heap declaration
 as a portable CI requirement, without changing the repository-wide Gradle policy.
 
+If the public runner cannot resolve a required AndroidX build-service artifact,
+the audit records the build as failed and the dependent test observation as
+`TOKEN_VAZIO`, uploads that report, and then fails closed. It never turns an
+unavailable build dependency into a green functional claim.
+
 The scheduled audit reports upstream age after 30 days as `REVIEW_REQUIRED`.
 That is a deliberate review signal rather than a fabricated compatibility result.
 
