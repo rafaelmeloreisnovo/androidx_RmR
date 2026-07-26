@@ -66,8 +66,20 @@ jobs:
           ndk_root="${android_sdk_root}/ndk/28.2.13676358"
           test -x "${ndk_root}/ndk-build"
           test -d "${android_sdk_root}/cmake/3.18.1"
+          # Keep sdkmanager and Gradle's local.properties generator on the
+          # exact same SDK root instead of relying on a runner-image alias.
+          printf 'ANDROID_SDK_ROOT=%s\\n' "${android_sdk_root}" >> "${GITHUB_ENV}"
+          printf 'ANDROID_HOME=%s\\n' "${android_sdk_root}" >> "${GITHUB_ENV}"
           printf 'ANDROID_NDK_HOME=%s\n' "${ndk_root}" >> "${GITHUB_ENV}"
           printf 'ANDROID_NDK_ROOT=%s\n' "${ndk_root}" >> "${GITHUB_ENV}"
+
+      - name: Verify Gradle SDK and NDK discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash development/write_sdk_path.sh
+          grep -Fqx "sdk.dir=${ANDROID_SDK_ROOT}" local.properties
+          test -x "${ANDROID_NDK_HOME}/ndk-build"
 
       - name: Record partial AndroidX checkout topology
         shell: bash
