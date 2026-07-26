@@ -1,0 +1,111 @@
+name: RmR upstream functional audit
+
+on:
+  pull_request:
+    paths:
+      - "rmr/**"
+      - "docs/RMR_*.md"
+      - "docs/UPSTREAM_DRIFT_LOG.md"
+      - ".github/workflows/rmr-*.yml"
+      - ".github/workflows/rmr-*.yaml"
+      - "settings.gradle"
+      - "settings.gradle.kts"
+  push:
+    branches: ["androidx-main"]
+    paths:
+      - "rmr/**"
+      - "docs/RMR_*.md"
+      - "docs/UPSTREAM_DRIFT_LOG.md"
+      - ".github/workflows/rmr-*.yml"
+      - ".github/workflows/rmr-*.yaml"
+      - "settings.gradle"
+      - "settings.gradle.kts"
+  schedule:
+    - cron: "43 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      upstream_ref:
+        description: "AndroidX upstream branch or tag to compare"
+        required: false
+        default: "androidx-main"
+        type: string
+      native_abis:
+        description: "Comma-separated native ABIs for release AARs"
+        required: false
+        default: "arm64-v8a"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rmr-upstream-functional-audit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit-build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      UPSTREAM_REF: ${{ inputs.upstream_ref || 'androidx-main' }}
+      RMR_NATIVE_ABIS: ${{ inputs.native_abis || 'arm64-v8a' }}
+      AUDIT_DIR: ${{ runner.temp }}/rmr-upstream-audit
+    steps:
+      - name: Checkout complete history for merge-base analysis
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Enforce the checked-in RmR fork boundary
+        run: |
+          python3 rmr/scripts/audit_androidx_upstream.py \
+            --upstream-ref "${UPSTREAM_REF}" \
+            --enforce-boundary \
+            --out-dir "${AUDIT_DIR}"
+
+      - name: Build every declared RmR release AAR
+        run: |
+          bash rmr/scripts/build_rmr_release.sh
+
+      - name: Execute the documented RmR unit-test entrypoints
+        run: |
+          ./gradlew --stacktrace --no-daemon \
+            -PrmrNativeAbis="${RMR_NATIVE_ABIS}" \
+            :rmr:rmr-core:test \
+            :rmr:rafaelia:test
+
+      - name: Record release and test observations in the audit
+        run: |
+          python3 rmr/scripts/audit_androidx_upstream.py \
+            --upstream-ref "${UPSTREAM_REF}" \
+            --skip-fetch \
+            --enforce-boundary \
+            --fail-on-whitespace \
+            --artifact-root rmr \
+            --out-dir "${AUDIT_DIR}" \
+            --observation rmr_release_aar_build=PASSED \
+            --observation rmr_core_tests=PASSED \
+            --observation rafaelia_tests=PASSED
+
+      - name: Upload upstream delta, test evidence, and AAR inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rmr-upstream-functional-audit-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/rmr-upstream-audit/
+            rmr/**/build/outputs/aar/*.aar
+          if-no-files-found: warn
+          retention-days: 30
