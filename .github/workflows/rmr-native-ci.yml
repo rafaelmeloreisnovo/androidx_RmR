@@ -50,6 +50,21 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Install Android native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          android_sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "${android_sdk_root}"
+          sdkmanager_bin="${android_sdk_root}/cmdline-tools/latest/bin/sdkmanager"
+          test -x "${sdkmanager_bin}"
+          yes | sudo "${sdkmanager_bin}" --install "ndk;28.2.13676358" "cmake;3.18.1"
+          ndk_root="${android_sdk_root}/ndk/28.2.13676358"
+          test -x "${ndk_root}/ndk-build"
+          test -d "${android_sdk_root}/cmake/3.18.1"
+          printf 'ANDROID_NDK_HOME=%s\n' "${ndk_root}" >> "${GITHUB_ENV}"
+          printf 'ANDROID_NDK_ROOT=%s\n' "${ndk_root}" >> "${GITHUB_ENV}"
+
       - name: Record partial AndroidX checkout topology
         shell: bash
         run: |
@@ -58,7 +73,7 @@ jobs:
           if [[ -d "${GITHUB_WORKSPACE}/../../external/icing" ]]; then
             external_icing="present"
           fi
-          printf '{"aosp_external_icing":"%s","allow_missing_projects":"true","project_prefix":":rmr"}\n' "${external_icing}" > "${RUNNER_TEMP}/rmr-ci-environment.json"
+          printf '{"aosp_external_icing":"%s","allow_missing_projects":"true","project_prefix":":rmr","ndk_version":"28.2.13676358","cmake_version":"3.18.1"}\n' "${external_icing}" > "${RUNNER_TEMP}/rmr-ci-environment.json"
 
       - name: Assemble RmR artifacts within hosted-runner resource bounds
         run: |
