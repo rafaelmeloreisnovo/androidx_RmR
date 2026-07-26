@@ -218,7 +218,10 @@ def artifact_inventory(repo: Path, artifact_root: str | None) -> list[dict[str, 
     for artifact in sorted(root.glob("**/build/outputs/aar/*.aar")):
         artifacts.append(
             {
-                "path": artifact.relative_to(repo).as_posix(),
+                # Artifact roots may be outside the source checkout in AndroidX.
+                # Keep the stable module-relative path rather than a runner-specific
+                # absolute path.
+                "path": f"{root.name}/{artifact.relative_to(root).as_posix()}",
                 "bytes": artifact.stat().st_size,
                 "sha256": sha256(artifact),
             }
@@ -284,6 +287,17 @@ def observed_status(observations: dict[str, str], key: str, fallback: str) -> st
     return fallback
 
 
+def packaging_status(observations: dict[str, str], artifacts: list[dict[str, Any]]) -> str:
+    observation = observations.get("rmr_release_aar_build")
+    if observation == "FAILED":
+        return "FAILED_IN_CI"
+    if observation == "PASSED":
+        # A successful Gradle command alone is not packaging evidence: the
+        # expected AARs must be present and hashable in the audit inventory.
+        return "OBSERVED_IN_CI" if artifacts else "TOKEN_VAZIO"
+    return "BUILD_ARTIFACT_EVIDENCE" if artifacts else "TOKEN_VAZIO"
+
+
 def build_claims(
     modules: dict[str, Any], artifacts: list[dict[str, Any]], legal: dict[str, Any], observations: dict[str, str]
 ) -> list[dict[str, str]]:
@@ -296,11 +310,7 @@ def build_claims(
         },
         {
             "id": "rmr_release_aar_packaging",
-            "status": observed_status(
-                observations,
-                "rmr_release_aar_build",
-                "BUILD_ARTIFACT_EVIDENCE" if artifacts else "TOKEN_VAZIO",
-            ),
+            "status": packaging_status(observations, artifacts),
             "evidence": "AAR file hashes are inventory evidence only; they do not prove runtime semantics.",
         },
         {

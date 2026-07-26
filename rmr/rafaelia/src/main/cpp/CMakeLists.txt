@@ -7,8 +7,16 @@ cmake_minimum_required(VERSION 3.18.1)
 
 project(rafaelia-native)
 
+# Keep the floating-point model explicit and consistent with the Gradle property.
+option(RMR_FAST_MATH "Enable aggressive floating-point optimizations" OFF)
+
 # Maximum optimization flags for bare-metal performance
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -O3 -ffast-math -funroll-loops")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -O3 -funroll-loops")
+if(RMR_FAST_MATH)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-fast-math")
+endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -fno-exceptions -fvisibility=hidden")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
 

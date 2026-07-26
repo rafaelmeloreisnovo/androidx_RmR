@@ -49,11 +49,23 @@ extern "C" {
 namespace {
 
 constexpr int kMatrixBlockSize = 64;
+
+#if defined(HAVE_SSE) || defined(HAVE_NEON)
 constexpr size_t kSseAlignment = 16;
+#endif
+
+#if defined(HAVE_AVX2)
 constexpr size_t kAvxAlignment = 32;
-constexpr size_t kSimdWidthSse = 4;
 constexpr size_t kSimdWidthAvx = 8;
+#endif
+
+#if defined(HAVE_SSE)
+constexpr size_t kSimdWidthSse = 4;
+#endif
+
+#if defined(HAVE_NEON)
 constexpr size_t kSimdWidthNeon = 4;
+#endif
 
 inline bool IsAligned(const void* ptr, size_t alignment) {
     return (reinterpret_cast<uintptr_t>(ptr) % alignment) == 0;
@@ -282,6 +294,8 @@ void MatrixMultiplyNeon(const float* aPtr,
  */
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeInitialize(JNIEnv* env, jclass clazz) {
+    (void)env;
+    (void)clazz;
     LOGI("Rafaelia Native Library initialized");
     LOGI("Cache line size: %d bytes", CACHE_LINE_SIZE);
     
@@ -303,6 +317,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeInitialize(JNIEnv* env, jclass cla
 JNIEXPORT jlong JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeAllocateAligned(
         JNIEnv* env, jclass clazz, jint size, jint alignment) {
+    (void)env;
+    (void)clazz;
     
     void* ptr = nullptr;
     
@@ -324,6 +340,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeAllocateAligned(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeFreeAligned(
         JNIEnv* env, jclass clazz, jlong address) {
+    (void)env;
+    (void)clazz;
     
     if (address == 0) return;
     
@@ -338,6 +356,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeFreeAligned(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemoryCopy(
         JNIEnv* env, jclass clazz, jlong src, jlong dst, jint size) {
+    (void)env;
+    (void)clazz;
     if (size <= 0 || src == 0 || dst == 0) {
         return;
     }
@@ -361,6 +381,7 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemoryCopy(
 JNIEXPORT jlong JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeGetDirectBufferAddress(
         JNIEnv* env, jclass clazz, jobject buffer) {
+    (void)clazz;
     if (buffer == nullptr) {
         return 0;
     }
@@ -377,6 +398,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeGetDirectBufferAddress(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemorySet(
         JNIEnv* env, jclass clazz, jlong address, jbyte value, jint size) {
+    (void)env;
+    (void)clazz;
     if (size <= 0 || address == 0) {
         return;
     }
@@ -390,6 +413,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemorySet(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeVectorAdd(
         JNIEnv* env, jclass clazz, jlong a, jlong b, jlong result, jint length) {
+    (void)env;
+    (void)clazz;
     if (length <= 0 || a == 0 || b == 0 || result == 0) {
         return;
     }
@@ -437,6 +462,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeVectorAdd(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeVectorMultiply(
         JNIEnv* env, jclass clazz, jlong a, jlong b, jlong result, jint length) {
+    (void)env;
+    (void)clazz;
     if (length <= 0 || a == 0 || b == 0 || result == 0) {
         return;
     }
@@ -487,6 +514,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMatrixMultiply(
         JNIEnv* env, jclass clazz, 
         jlong a, jlong b, jlong result, 
         jint rows, jint inner, jint cols) {
+    (void)env;
+    (void)clazz;
     if (rows <= 0 || inner <= 0 || cols <= 0 || a == 0 || b == 0 || result == 0) {
         return;
     }
@@ -581,15 +610,21 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeDetectCpuFeatures(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativePrefetch(
         JNIEnv* env, jclass clazz, jlong address, jint hint) {
+    (void)env;
+    (void)clazz;
     if (address == 0) {
         return;
     }
     const void* ptr = reinterpret_cast<const void*>(address);
     
-    // Use compiler builtin for prefetch
-    // hint 0 = temporal (keep in all cache levels)
-    // hint 1 = non-temporal (don't keep in cache)
-    __builtin_prefetch(ptr, 0, hint);
+    // __builtin_prefetch requires its cache-locality argument to be a
+    // compile-time constant. Preserve the Java contract: 0 is temporal and
+    // 1 is non-temporal; unknown values use the safe temporal default.
+    if (hint == 1) {
+        __builtin_prefetch(ptr, 0, 0);
+    } else {
+        __builtin_prefetch(ptr, 0, 3);
+    }
 }
 
 } // extern "C"

@@ -16,7 +16,10 @@
 
 package androidx.rmr.rafaelia;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
@@ -76,4 +79,73 @@ public class RafaeliaCoreTest {
             nativeAvailableField.set(null, originalNativeAvailable);
         }
     }
+    @Test
+    public void createAlignsSizeAndRejectsInvalidAllocationSizes() throws Exception {
+        Field validatedField = RafaeliaCore.class.getDeclaredField("sValidated");
+        validatedField.setAccessible(true);
+        boolean originalValidated = (boolean) validatedField.get(null);
+        validatedField.set(null, true);
+        try {
+            assertEquals(64, RafaeliaCore.create(1).getDirectMemory().capacity());
+
+            try {
+                RafaeliaCore.create(-1);
+                fail("Negative allocation sizes must be rejected");
+            } catch (IllegalArgumentException expected) {
+                // Expected.
+            }
+
+            try {
+                RafaeliaCore.create(Integer.MAX_VALUE);
+                fail("Overflowing aligned allocation sizes must be rejected");
+            } catch (IllegalArgumentException expected) {
+                // Expected.
+            }
+        } finally {
+            validatedField.set(null, originalValidated);
+        }
+    }
+
+    @Test
+    public void vectorOperationsHandlePartialLengthAndAliasedOutput() {
+        float[] sum = new float[] {1.0f, -2.0f, 99.0f};
+        RafaeliaCore.vectorAdd(sum, new float[] {4.0f, 3.0f, 7.0f}, sum, 2);
+        assertArrayEquals(new float[] {5.0f, 1.0f, 99.0f}, sum, 0.0f);
+
+        float[] product = new float[] {0.0f, 0.0f, Float.NaN};
+        RafaeliaCore.vectorMultiply(
+                new float[] {2.0f, -3.0f, 9.0f},
+                new float[] {4.0f, 5.0f, 2.0f},
+                product,
+                2);
+        assertEquals(8.0f, product[0], 0.0f);
+        assertEquals(-15.0f, product[1], 0.0f);
+        assertTrue(Float.isNaN(product[2]));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void vectorAddRejectsInsufficientInputLength() {
+        RafaeliaCore.vectorAdd(new float[1], new float[1], new float[1], 2);
+    }
+
+    @Test
+    public void matrixMultiplyHandlesRectangularMatricesAndResetsOutput() {
+        float[] result = new float[] {Float.NaN, Float.NaN, Float.NaN, Float.NaN};
+        RafaeliaCore.matrixMultiply(
+                new float[] {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f},
+                new float[] {7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f},
+                result,
+                2,
+                3,
+                2);
+        assertArrayEquals(new float[] {58.0f, 64.0f, 139.0f, 154.0f}, result, 0.0f);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void optimizedMemoryCopyRejectsReadOnlyDestination() {
+        ByteBuffer src = ByteBuffer.allocateDirect(1);
+        ByteBuffer dst = ByteBuffer.allocateDirect(1).asReadOnlyBuffer();
+        RafaeliaCore.optimizedMemoryCopy(src, 0, dst, 0, 1);
+    }
+
 }

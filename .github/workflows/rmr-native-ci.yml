@@ -22,8 +22,20 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ORG_GRADLE_PROJECT_rmrNativeAbis: ${{ inputs.native_abis || 'arm64-v8a' }}
+      RMR_FAST_MATH: "false"
+      RMR_VERIFY_CMAKE_CONFIGURATION: "true"
       RMR_GRADLE_JVM_ARGS: "-Xms1g -Xmx5g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
       RMR_GRADLE_WORKERS: "2"
+      # Public CI has no AndroidX prebuilts checkout, so enable only the
+      # repositories explicitly permitted by settings.gradle.
+      ALLOW_PUBLIC_REPOS: "true"
+      # Avoid the Google-internal AndroidX remote build cache on public runners.
+      USE_ANDROIDX_REMOTE_BUILD_CACHE: "false"
+      # Source-supported partial-tree mode: missing sibling projects stay visible
+      # in the CI receipt and do not satisfy RmR dependency resolution.
+      ALLOW_MISSING_PROJECTS: "true"
+      # Keep this CI scoped to RmR instead of the full AOSP multi-repo checkout.
+      PROJECT_PREFIX: ":rmr"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,9 +52,72 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Install Android native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          android_sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "${android_sdk_root}"
+          sdkmanager_bin="${android_sdk_root}/cmdline-tools/latest/bin/sdkmanager"
+          test -x "${sdkmanager_bin}"
+          # sdkmanager exits after consuming its input; ignore the expected SIGPIPE
+          # from yes while still failing when sdkmanager itself fails.
+          set +o pipefail
+          yes 2>/dev/null | sudo "${sdkmanager_bin}" --install "ndk;28.2.13676358" "cmake;3.18.1"
+          set -o pipefail
+          ndk_root="${android_sdk_root}/ndk/28.2.13676358"
+          test -x "${ndk_root}/ndk-build"
+          cmake_root="${android_sdk_root}/cmake/3.18.1"
+          test -x "${cmake_root}/bin/cmake"
+          # Keep sdkmanager and Gradle's local.properties generator on the
+          # exact same SDK root instead of relying on a runner-image alias.
+          printf 'ANDROID_SDK_ROOT=%s\n' "${android_sdk_root}" >> "${GITHUB_ENV}"
+          printf 'ANDROID_HOME=%s\n' "${android_sdk_root}" >> "${GITHUB_ENV}"
+          printf 'ANDROID_CMAKE_VERSION=%s\n' "3.18.1" >> "${GITHUB_ENV}"
+          printf 'ANDROID_NDK_HOME=%s\n' "${ndk_root}" >> "${GITHUB_ENV}"
+          printf 'ANDROID_NDK_ROOT=%s\n' "${ndk_root}" >> "${GITHUB_ENV}"
+
+      - name: Verify Gradle SDK and NDK discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash development/write_sdk_path.sh
+          grep -Fqx "sdk.dir=${ANDROID_SDK_ROOT}" local.properties
+          grep -Fqx "cmake.dir=${ANDROID_SDK_ROOT}/cmake/${ANDROID_CMAKE_VERSION}" local.properties
+          test -x "${ANDROID_NDK_HOME}/ndk-build"
+          test -x "${ANDROID_SDK_ROOT}/cmake/${ANDROID_CMAKE_VERSION}/bin/cmake"
+
+      - name: Record partial AndroidX checkout topology
+        shell: bash
+        run: |
+          set -euo pipefail
+          external_icing="absent"
+          if [[ -d "${GITHUB_WORKSPACE}/../../external/icing" ]]; then
+            external_icing="present"
+          fi
+          printf '{"aosp_external_icing":"%s","allow_missing_projects":"true","project_prefix":":rmr","ndk_version":"28.2.13676358","cmake_version":"3.18.1"}\n' "${external_icing}" > "${RUNNER_TEMP}/rmr-ci-environment.json"
+
       - name: Assemble RmR artifacts within hosted-runner resource bounds
         run: |
-          bash rmr/scripts/build_rmr_release.sh
+          RMR_BUILD_RECEIPT_PATH="${RUNNER_TEMP}/rmr-native-build-receipt.json" \
+            bash rmr/scripts/build_rmr_release.sh
+
+      - name: Verify and inventory release AARs
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_root="${GITHUB_WORKSPACE}/../../out/androidx/rmr"
+          inventory="${RUNNER_TEMP}/rmr-aar-inventory.txt"
+          staging_root="${RUNNER_TEMP}/rmr-aars"
+          test -d "${output_root}"
+          find "${output_root}" -type f -path "*/build/outputs/aar/*.aar" -print | sort | tee "${inventory}"
+          test -s "${inventory}"
+          while IFS= read -r artifact; do
+            relative_path="${artifact#${output_root}/}"
+            destination="${staging_root}/${relative_path}"
+            mkdir -p "$(dirname "${destination}")"
+            cp "${artifact}" "${destination}"
+          done < "${inventory}"
 
       - name: Upload AAR artifacts
         uses: actions/upload-artifact@v4
@@ -50,4 +125,7 @@ jobs:
           name: rmr-aars-${{ github.run_id }}
           if-no-files-found: error
           path: |
-            rmr/**/build/outputs/aar/*.aar
+            ${{ runner.temp }}/rmr-aars/
+            ${{ runner.temp }}/rmr-aar-inventory.txt
+            ${{ runner.temp }}/rmr-ci-environment.json
+            ${{ runner.temp }}/rmr-native-build-receipt.json

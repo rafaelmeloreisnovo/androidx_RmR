@@ -12,9 +12,7 @@ package androidx.rmr.rafaelia;
 import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.NotThreadSafe;
 import androidx.annotation.RawRes;
-import androidx.annotation.ThreadSafe;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,7 +24,6 @@ import java.nio.Buffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -68,7 +65,6 @@ import java.util.Map;
  * @version 1.0
  * @since 2026
  */
-@NotThreadSafe
 public final class RafaeliaCore {
     
     // Usage restriction enforcement
@@ -92,7 +88,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock VQF load vector (1..42).
      */
     @NonNull
-    @ThreadSafe
     public static int[] getVqfLoad() {
         return RafaeliaBootblock.getVqfLoad();
     }
@@ -101,7 +96,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock kernel identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getKernel() {
         return RafaeliaBootblock.KERNEL;
     }
@@ -110,7 +104,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock mode identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getMode() {
         return RafaeliaBootblock.MODE;
     }
@@ -119,7 +112,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock cognition identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getCognition() {
         return RafaeliaBootblock.COGNITION;
     }
@@ -128,7 +120,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock ethic identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getEthic() {
         return RafaeliaBootblock.ETHIC;
     }
@@ -137,7 +128,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock hash core identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getHashCore() {
         return RafaeliaBootblock.HASH_CORE;
     }
@@ -146,7 +136,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock vector core identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getVectorCore() {
         return RafaeliaBootblock.VECTOR_CORE;
     }
@@ -155,7 +144,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock universe identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getUniverse() {
         return RafaeliaBootblock.UNIVERSE;
     }
@@ -164,7 +152,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock seals as a defensive copy.
      */
     @NonNull
-    @ThreadSafe
     public static String[] getSeals() {
         return RafaeliaBootblock.getSeals();
     }
@@ -202,7 +189,6 @@ public final class RafaeliaCore {
     /**
      * Explicitly injects a license record in memory.
      */
-    @ThreadSafe
     public static void injectLicense(@NonNull String content) {
         injectLicense(content, null);
     }
@@ -210,7 +196,6 @@ public final class RafaeliaCore {
     /**
      * Explicitly injects a license record in memory with optional full-content hash check.
      */
-    @ThreadSafe
     public static void injectLicense(@NonNull String content, @Nullable String expectedContentSha256) {
         String normalizedHash = normalizeHash(expectedContentSha256);
         LicenseRecord parsed = parseAndValidateLicense(content, normalizedHash, null);
@@ -225,7 +210,6 @@ public final class RafaeliaCore {
     /**
      * Loads a license from app-internal storage.
      */
-    @ThreadSafe
     public static void loadLicenseFromInternalStorage(
             @NonNull Context context,
             @NonNull String relativePath,
@@ -259,7 +243,6 @@ public final class RafaeliaCore {
     /**
      * Loads a signed license from a packaged raw resource.
      */
-    @ThreadSafe
     public static void loadLicenseFromRawResource(
             @NonNull Context context,
             @RawRes int rawResId,
@@ -322,33 +305,22 @@ public final class RafaeliaCore {
     }
     
     /**
-     * Checks for authorization file or token.
+     * Checks the loaded authorization record without discovering implicit
+     * files or environment paths at use time.
      *
-     * Supported path policy:
-     * - Single supported source is an explicit file path provided by
-     *   {@code -Drafaelia.license.path=<absolute-path>}.
-     * - The file is expected to live in app-internal storage (for example,
-     *   {@code Context.getFilesDir()}) to avoid runtime storage permissions.
-     * - External/shared storage and implicit fallback locations are intentionally
-     *   not supported.
-     *
-     * @return true if authorization is present
+     * @return true only for a record that has already passed validation
      */
-    private static boolean checkAuthorizationFile() {
-        List<File> candidates = new ArrayList<>();
-        String explicitPath = System.getProperty("rafaelia.license.path");
-        if (explicitPath != null && !explicitPath.trim().isEmpty()) {
-            candidates.add(new File(explicitPath.trim()));
+    private static boolean checkAuthorizationState() {
+        LicenseRecord record = sLicenseRecord;
+        if (record == null || !record.isValid()) {
+            return false;
         }
-
-        String envPath = System.getenv("RAFAELIA_LICENSE_PATH");
-        if (envPath != null && !envPath.trim().isEmpty()) {
-            candidates.add(new File(envPath.trim()));
-        }
-
-        String userHome = System.getProperty("user.home");
-        if (userHome != null && !userHome.trim().isEmpty()) {
-            candidates.add(new File(new File(userHome, ".rafaelia"), "license.txt"));
+        String expectedContentHash = sLicenseContentHash;
+        if (expectedContentHash != null) {
+            String actualContentHash = normalizeHash(record.contentHash);
+            if (!expectedContentHash.equals(actualContentHash)) {
+                return false;
+            }
         }
         String expectedRawSignature = sRawResourceExpectedSignature;
         if (expectedRawSignature != null) {
@@ -360,22 +332,25 @@ public final class RafaeliaCore {
         return true;
     }
 
-        for (File file : candidates) {
-            if (!RafaeliaCompat.isRegularFile(file)) {
-                continue;
+    @NonNull
+    private static LicenseRecord parseAndValidateLicense(
+            @NonNull String content,
+            @Nullable String expectedContentHash,
+            @Nullable String expectedSignature) {
+        LicenseRecord parsed = parseLicenseRecord(content);
+        if (parsed == null || !parsed.isValid()) {
+            throw new IllegalArgumentException("Invalid license content");
+        }
+        if (expectedContentHash != null) {
+            String actualHash = normalizeHash(parsed.contentHash);
+            if (!expectedContentHash.equals(actualHash)) {
+                throw new SecurityException("License content hash mismatch");
             }
-            try {
-                String content = RafaeliaCompat.readUtf8File(file);
-                LicenseRecord record = parseLicenseRecord(content);
-                if (record == null || !record.isValid()) {
-                    continue;
-                }
-                if (expectedHash != null && !expectedHash.equals(sha256Hex(content))) {
-                    continue;
-                }
-                return true;
-            } catch (Exception ignored) {
-                // Keep checking other candidates.
+        }
+        if (expectedSignature != null) {
+            String signature = normalizeHash(parsed.getValue("signature_sha256"));
+            if (!expectedSignature.equals(signature)) {
+                throw new SecurityException("License signature mismatch");
             }
         }
         return parsed;
@@ -571,9 +546,9 @@ public final class RafaeliaCore {
      * @param sizeBytes size of memory to allocate
      * @return new instance
      * @throws SecurityException if usage is not authorized
+     * @throws IllegalArgumentException if the requested size is negative or cannot be aligned
      */
     @NonNull
-    @ThreadSafe
     public static RafaeliaCore create(int sizeBytes) {
         if (!sValidated) {
             validateUsage();
@@ -587,12 +562,23 @@ public final class RafaeliaCore {
      * @param sizeBytes size of memory to allocate
      */
     private RafaeliaCore(int sizeBytes) {
-        // Align size to cache line boundary
-        int alignedSize = ((sizeBytes + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
-        
+        int alignedSize = alignSizeToCacheLine(sizeBytes);
+
         // Allocate direct memory (outside Java heap)
         mDirectMemory = ByteBuffer.allocateDirect(alignedSize);
         mDirectMemory.order(ByteOrder.nativeOrder()); // Use native byte order for performance
+    }
+
+    private static int alignSizeToCacheLine(int sizeBytes) {
+        if (sizeBytes < 0) {
+            throw new IllegalArgumentException("Size must be non-negative");
+        }
+        long alignedSize =
+                ((long) sizeBytes + CACHE_LINE_SIZE - 1L) / CACHE_LINE_SIZE * CACHE_LINE_SIZE;
+        if (alignedSize > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Size is too large after cache-line alignment");
+        }
+        return (int) alignedSize;
     }
     
     /**
@@ -604,7 +590,6 @@ public final class RafaeliaCore {
      * @return direct memory buffer
      */
     @NonNull
-    @NotThreadSafe
     public ByteBuffer getDirectMemory() {
         return mDirectMemory;
     }
@@ -623,7 +608,6 @@ public final class RafaeliaCore {
      * @param dstOffset destination offset
      * @param length number of bytes to copy
      */
-    @ThreadSafe
     public static void optimizedMemoryCopy(
             @NonNull ByteBuffer src, int srcOffset,
             @NonNull ByteBuffer dst, int dstOffset,
@@ -640,6 +624,9 @@ public final class RafaeliaCore {
         long dstEnd = (long) dstOffset + (long) length;
         if (srcEnd > src.capacity() || dstEnd > dst.capacity()) {
             throw new IndexOutOfBoundsException("Copy would exceed buffer bounds");
+        }
+        if (length > 0 && dst.isReadOnly()) {
+            throw new IllegalArgumentException("Destination buffer is read-only");
         }
         debugCheckExclusiveMemoryCopy(src, srcOffset, dst, dstOffset, length);
         if (length == 0) {
@@ -688,7 +675,6 @@ public final class RafaeliaCore {
      * @param result result vector
      * @param length vector length (must be same for all)
      */
-    @ThreadSafe
     public static void vectorAdd(
             @NonNull float[] a,
             @NonNull float[] b,
@@ -721,7 +707,6 @@ public final class RafaeliaCore {
      * @param result result vector
      * @param length vector length (must be same for all)
      */
-    @ThreadSafe
     public static void vectorMultiply(
             @NonNull float[] a,
             @NonNull float[] b,
@@ -756,7 +741,6 @@ public final class RafaeliaCore {
      * @param inner inner dimension (cols of a, rows of b)
      * @param cols number of cols in b and result
      */
-    @ThreadSafe
     public static void matrixMultiply(
             @NonNull float[] a,
             @NonNull float[] b,
@@ -816,7 +800,6 @@ public final class RafaeliaCore {
      * 
      * @param address memory address to prefetch
      */
-    @ThreadSafe
     public static void prefetch(long address) {
         // Use native prefetch if available
         if (sNativeAvailable && address != 0) {
@@ -830,7 +813,6 @@ public final class RafaeliaCore {
      * <p>Use this gate to decide between native-accelerated paths and
      * pure-Java fallbacks.
      */
-    @ThreadSafe
     public static boolean isNativeAvailable() {
         return sNativeAvailable;
     }
@@ -854,7 +836,6 @@ public final class RafaeliaCore {
      *
      * @return bit mask of available features, or {@code 0} if native is unavailable
      */
-    @ThreadSafe
     public static int getCpuFeatures() {
         return sNativeAvailable ? nativeDetectCpuFeatures() : 0;
     }
@@ -867,9 +848,6 @@ public final class RafaeliaCore {
             int length) {
         if (!DEBUG) {
             return;
-        }
-        if (dst.isReadOnly()) {
-            throw new IllegalArgumentException("Destination buffer is read-only");
         }
         if (length == 0 || src != dst) {
             return;
