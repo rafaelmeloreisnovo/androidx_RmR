@@ -22,6 +22,9 @@ plugins {
 android {
     namespace = "androidx.rmr.core"
 
+    // Pin the side-by-side NDK used by the native CMake build.
+    ndkVersion = "28.2.13676358"
+
     def fastMathEnabled = project.findProperty("rmrFastMath")?.toString()?.toBoolean() ?: false
     def mathFlag = fastMathEnabled ? "-ffast-math" : "-fno-fast-math"
     def configuredAbis = (project.findProperty("rmrNativeAbis")?.toString() ?: "arm64-v8a")
