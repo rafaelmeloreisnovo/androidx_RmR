@@ -24,6 +24,12 @@
 #define HAS_NEON 1
 #endif
 
+// ARMv7 NEON has no 128-bit FP64 vector type. The double-precision SIMD
+// implementation below is therefore valid only for AArch64.
+#if defined(__aarch64__) && defined(HAS_NEON)
+#define HAS_NEON_F64 1
+#endif
+
 #ifdef __x86_64__
 #include <emmintrin.h>  // SSE2
 #include <immintrin.h>  // AVX
@@ -53,10 +59,10 @@ static inline int alignToCacheLine(int size) {
 }
 
 /**
- * NEON-optimized matrix multiplication for ARM/ARM64.
+ * AArch64 NEON-optimized matrix multiplication.
  * Uses 128-bit SIMD registers to process 2 doubles at a time.
  */
-#ifdef HAS_NEON
+#ifdef HAS_NEON_F64
 static void multiplyNEON(const double* __restrict__ aData, int aRows, int aCols,
                         const double* __restrict__ bData, int bRows, int bCols,
                         double* __restrict__ resultData) {
@@ -294,7 +300,7 @@ Java_androidx_rmr_core_RmRMatrixOps_multiplyNative(JNIEnv* env, jclass clazz,
     multiplyAVX(a, aRows, aCols, b, bRows, bCols, result);
 #elif defined(HAS_SSE2)
     multiplySSE2(a, aRows, aCols, b, bRows, bCols, result);
-#elif defined(HAS_NEON)
+#elif defined(HAS_NEON_F64)
     multiplyNEON(a, aRows, aCols, b, bRows, bCols, result);
 #else
     multiplyScalar(a, aRows, aCols, b, bRows, bCols, result);
