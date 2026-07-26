@@ -14,6 +14,7 @@
 
 namespace {
 
+#if defined(__x86_64__) || defined(__i386__)
 constexpr jint kCpuFeatureSse = 1 << 0;
 constexpr jint kCpuFeatureSse2 = 1 << 1;
 constexpr jint kCpuFeatureSse3 = 1 << 2;
@@ -22,7 +23,9 @@ constexpr jint kCpuFeatureSse42 = 1 << 4;
 constexpr jint kCpuFeatureAvx = 1 << 5;
 constexpr jint kCpuFeatureAvx2 = 1 << 6;
 constexpr jint kCpuFeatureFma = 1 << 7;
+#elif defined(__linux__) && (defined(__aarch64__) || defined(__arm__))
 constexpr jint kCpuFeatureNeon = 1 << 8;
+#endif
 
 jint DetectCpuFeaturesRuntime() {
     jint features = 0;
