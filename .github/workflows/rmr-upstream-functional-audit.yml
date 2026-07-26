@@ -97,7 +97,11 @@ jobs:
           test -n "${android_sdk_root}"
           sdkmanager_bin="${android_sdk_root}/cmdline-tools/latest/bin/sdkmanager"
           test -x "${sdkmanager_bin}"
-          yes | sudo "${sdkmanager_bin}" --install "ndk;28.2.13676358" "cmake;3.18.1"
+          # sdkmanager exits after consuming its input; ignore the expected SIGPIPE
+          # from yes while still failing when sdkmanager itself fails.
+          set +o pipefail
+          yes 2>/dev/null | sudo "${sdkmanager_bin}" --install "ndk;28.2.13676358" "cmake;3.18.1"
+          set -o pipefail
           ndk_root="${android_sdk_root}/ndk/28.2.13676358"
           test -x "${ndk_root}/ndk-build"
           test -d "${android_sdk_root}/cmake/3.18.1"
