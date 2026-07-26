@@ -56,6 +56,9 @@ jobs:
       ALLOW_PUBLIC_REPOS: "true"
       # Public CI must not attempt the AndroidX Google-internal remote cache.
       USE_ANDROIDX_REMOTE_BUILD_CACHE: "false"
+      # This upstream setting allows a targeted build in a partial public checkout.
+      # It does not supply missing projects or turn their dependencies into passes.
+      ALLOW_MISSING_PROJECTS: "true"
       # settings.gradle supports this filter; it prevents unrelated AOSP sibling
       # projects such as external/icing from entering an RmR-only CI invocation.
       PROJECT_PREFIX: ":rmr"
@@ -72,6 +75,16 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/rmr-upstream-audit"
           printf 'AUDIT_DIR=%s\n' "${RUNNER_TEMP}/rmr-upstream-audit" >> "${GITHUB_ENV}"
 
+      - name: Record partial AndroidX checkout topology
+        shell: bash
+        run: |
+          set -euo pipefail
+          external_icing="absent"
+          if [[ -d "${GITHUB_WORKSPACE}/../../external/icing" ]]; then
+            external_icing="present"
+          fi
+          printf '{"aosp_external_icing":"%s","allow_missing_projects":"true","project_prefix":":rmr"}\n' "${external_icing}" > "${AUDIT_DIR}/ci_environment.json"
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -84,11 +97,10 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Enforce the checked-in RmR fork boundary
+      - name: Record the checked-in RmR fork boundary
         run: |
           python3 rmr/scripts/audit_androidx_upstream.py \
             --upstream-ref "${UPSTREAM_REF}" \
-            --enforce-boundary \
             --out-dir "${AUDIT_DIR}"
 
       - name: Build every declared RmR release AAR
@@ -118,18 +130,29 @@ jobs:
           python3 rmr/scripts/audit_androidx_upstream.py \
             --upstream-ref "${UPSTREAM_REF}" \
             --skip-fetch \
-            --enforce-boundary \
-            --fail-on-whitespace \
             --artifact-root rmr \
             --out-dir "${AUDIT_DIR}" \
             --observation rmr_release_aar_build="${BUILD_OBSERVATION}" \
             --observation rmr_core_tests="${TEST_OBSERVATION}" \
             --observation rafaelia_tests="${TEST_OBSERVATION}"
 
-      - name: Fail closed when functional proof is incomplete
-        if: ${{ steps.build_rmr.outcome != 'success' || steps.rmr_tests.outcome != 'success' }}
+      - name: Enforce recorded boundary and whitespace policy
+        id: boundary_policy
+        if: always()
+        continue-on-error: true
         run: |
-          echo "RmR functional evidence is incomplete; inspect the uploaded audit artifact."
+          python3 rmr/scripts/audit_androidx_upstream.py \
+            --upstream-ref "${UPSTREAM_REF}" \
+            --skip-fetch \
+            --enforce-boundary \
+            --fail-on-whitespace \
+            --artifact-root rmr \
+            --out-dir "${AUDIT_DIR}/policy"
+
+      - name: Fail closed when functional proof or policy gate is incomplete
+        if: ${{ steps.build_rmr.outcome != 'success' || steps.rmr_tests.outcome != 'success' || steps.boundary_policy.outcome != 'success' }}
+        run: |
+          echo "RmR functional evidence or upstream-boundary policy is incomplete; inspect the uploaded audit artifact."
           exit 1
 
       - name: Upload upstream delta, test evidence, and AAR inventory
