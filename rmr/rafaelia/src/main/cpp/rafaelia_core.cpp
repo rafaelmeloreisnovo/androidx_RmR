@@ -49,11 +49,23 @@ extern "C" {
 namespace {
 
 constexpr int kMatrixBlockSize = 64;
+
+#if defined(HAVE_SSE) || defined(HAVE_NEON)
 constexpr size_t kSseAlignment = 16;
+#endif
+
+#if defined(HAVE_AVX2)
 constexpr size_t kAvxAlignment = 32;
-constexpr size_t kSimdWidthSse = 4;
 constexpr size_t kSimdWidthAvx = 8;
+#endif
+
+#if defined(HAVE_SSE)
+constexpr size_t kSimdWidthSse = 4;
+#endif
+
+#if defined(HAVE_NEON)
 constexpr size_t kSimdWidthNeon = 4;
+#endif
 
 inline bool IsAligned(const void* ptr, size_t alignment) {
     return (reinterpret_cast<uintptr_t>(ptr) % alignment) == 0;
