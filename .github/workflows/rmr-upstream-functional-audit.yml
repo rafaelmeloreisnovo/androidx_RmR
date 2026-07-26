@@ -75,16 +75,6 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/rmr-upstream-audit"
           printf 'AUDIT_DIR=%s\n' "${RUNNER_TEMP}/rmr-upstream-audit" >> "${GITHUB_ENV}"
 
-      - name: Record partial AndroidX checkout topology
-        shell: bash
-        run: |
-          set -euo pipefail
-          external_icing="absent"
-          if [[ -d "${GITHUB_WORKSPACE}/../../external/icing" ]]; then
-            external_icing="present"
-          fi
-          printf '{"aosp_external_icing":"%s","allow_missing_projects":"true","project_prefix":":rmr","ndk_version":"28.2.13676358","cmake_version":"3.18.1"}\n' "${external_icing}" > "${AUDIT_DIR}/ci_environment.json"
-
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -111,6 +101,16 @@ jobs:
           test -d "${android_sdk_root}/cmake/3.18.1"
           printf 'ANDROID_NDK_HOME=%s\n' "${ndk_root}" >> "${GITHUB_ENV}"
           printf 'ANDROID_NDK_ROOT=%s\n' "${ndk_root}" >> "${GITHUB_ENV}"
+
+      - name: Record partial AndroidX checkout topology
+        shell: bash
+        run: |
+          set -euo pipefail
+          external_icing="absent"
+          if [[ -d "${GITHUB_WORKSPACE}/../../external/icing" ]]; then
+            external_icing="present"
+          fi
+          printf '{"aosp_external_icing":"%s","allow_missing_projects":"true","project_prefix":":rmr","ndk_version":"28.2.13676358","cmake_version":"3.18.1"}\n' "${external_icing}" > "${AUDIT_DIR}/ci_environment.json"
 
       - name: Record the checked-in RmR fork boundary
         run: |
