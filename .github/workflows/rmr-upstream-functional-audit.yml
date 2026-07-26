@@ -56,6 +56,9 @@ jobs:
       ALLOW_PUBLIC_REPOS: "true"
       # Public CI must not attempt the AndroidX Google-internal remote cache.
       USE_ANDROIDX_REMOTE_BUILD_CACHE: "false"
+      # settings.gradle supports this filter; it prevents unrelated AOSP sibling
+      # projects such as external/icing from entering an RmR-only CI invocation.
+      PROJECT_PREFIX: ":rmr"
     steps:
       - name: Checkout complete history for merge-base analysis
         uses: actions/checkout@v4
