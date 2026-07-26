@@ -51,12 +51,23 @@ jobs:
       RMR_NATIVE_ABIS: ${{ inputs.native_abis || 'arm64-v8a' }}
       RMR_GRADLE_JVM_ARGS: "-Xms1g -Xmx5g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
       RMR_GRADLE_WORKERS: "2"
-      AUDIT_DIR: ${{ runner.temp }}/rmr-upstream-audit
+      # The GitHub clone does not contain AndroidX's local prebuilts tree.
+      # settings.gradle explicitly opts into the public repositories with this flag.
+      ALLOW_PUBLIC_REPOS: "true"
+      # Public CI must not attempt the AndroidX Google-internal remote cache.
+      USE_ANDROIDX_REMOTE_BUILD_CACHE: "false"
     steps:
       - name: Checkout complete history for merge-base analysis
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Initialize audit workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/rmr-upstream-audit"
+          printf 'AUDIT_DIR=%s\n' "${RUNNER_TEMP}/rmr-upstream-audit" >> "${GITHUB_ENV}"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
