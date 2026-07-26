@@ -27,6 +27,9 @@ plugins {
 android {
     namespace = "androidx.rmr.rafaelia"
 
+    // Pin the side-by-side NDK used by the native CMake build.
+    ndkVersion = "28.2.13676358"
+
     // Required for AGP 9+ when using buildConfigField declarations.
     buildFeatures {
         buildConfig = true
