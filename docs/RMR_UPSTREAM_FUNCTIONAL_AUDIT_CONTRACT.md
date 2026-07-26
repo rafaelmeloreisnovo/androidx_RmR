@@ -28,6 +28,10 @@ performance improvement, or licence compatibility without the required proof.
 6. Hash every produced AAR, then re-write and upload the report with the actual
    build/test observations.
 
+Hosted CI supplies a bounded Gradle JVM (`-Xms1g -Xmx5g`) and two workers through
+environment variables. This avoids treating a workstation-sized heap declaration
+as a portable CI requirement, without changing the repository-wide Gradle policy.
+
 The scheduled audit reports upstream age after 30 days as `REVIEW_REQUIRED`.
 That is a deliberate review signal rather than a fabricated compatibility result.
 
