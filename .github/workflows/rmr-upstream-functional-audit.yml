@@ -51,6 +51,8 @@ jobs:
     env:
       UPSTREAM_REF: ${{ inputs.upstream_ref || 'androidx-main' }}
       RMR_NATIVE_ABIS: ${{ inputs.native_abis || 'arm64-v8a' }}
+      RMR_FAST_MATH: "false"
+      RMR_VERIFY_CMAKE_CONFIGURATION: "true"
       RMR_GRADLE_JVM_ARGS: "-Xms1g -Xmx5g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
       RMR_GRADLE_WORKERS: "2"
       # The GitHub clone does not contain AndroidX's local prebuilts tree.
@@ -147,7 +149,8 @@ jobs:
         id: build_rmr
         continue-on-error: true
         run: |
-          bash rmr/scripts/build_rmr_release.sh
+          RMR_BUILD_RECEIPT_PATH="${AUDIT_DIR}/rmr-native-build-receipt.json" \
+            bash rmr/scripts/build_rmr_release.sh
 
       - name: Verify and inventory release AARs
         id: aar_inventory
@@ -177,6 +180,7 @@ jobs:
             -Dorg.gradle.jvmargs="${RMR_GRADLE_JVM_ARGS}" \
             -Dorg.gradle.workers.max="${RMR_GRADLE_WORKERS}" \
             -PrmrNativeAbis="${RMR_NATIVE_ABIS}" \
+            -PrmrFastMath="${RMR_FAST_MATH}" \
             :rmr:rmr-core:test \
             :rmr:rafaelia:test
 
