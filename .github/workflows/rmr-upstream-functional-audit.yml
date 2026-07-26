@@ -76,8 +76,9 @@ jobs:
           set -euo pipefail
           mkdir -p "${RUNNER_TEMP}/rmr-upstream-audit"
           printf 'AUDIT_DIR=%s\n' "${RUNNER_TEMP}/rmr-upstream-audit" >> "${GITHUB_ENV}"
-          # AndroidX writes module outputs outside the checked-out source tree.
-          printf 'RMR_BUILD_OUTPUT_ROOT=%s\n' "${RUNNER_WORKSPACE}/out/androidx/rmr" >> "${GITHUB_ENV}"
+          # AndroidX writes module outputs two levels above the checked-out
+          # source tree on hosted runners.
+          printf 'RMR_BUILD_OUTPUT_ROOT=%s\n' "${GITHUB_WORKSPACE}/../../out/androidx/rmr" >> "${GITHUB_ENV}"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -155,9 +156,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          inventory="${AUDIT_DIR}/rmr_release_aars.txt"
+          staging_root="${AUDIT_DIR}/aars"
           test -d "${RMR_BUILD_OUTPUT_ROOT}"
-          find "${RMR_BUILD_OUTPUT_ROOT}" -type f -path "*/build/outputs/aar/*.aar" -print | sort | tee "${AUDIT_DIR}/rmr_release_aars.txt"
-          test -s "${AUDIT_DIR}/rmr_release_aars.txt"
+          find "${RMR_BUILD_OUTPUT_ROOT}" -type f -path "*/build/outputs/aar/*.aar" -print | sort | tee "${inventory}"
+          test -s "${inventory}"
+          while IFS= read -r artifact; do
+            relative_path="${artifact#${RMR_BUILD_OUTPUT_ROOT}/}"
+            destination="${staging_root}/${relative_path}"
+            mkdir -p "$(dirname "${destination}")"
+            cp "${artifact}" "${destination}"
+          done < "${inventory}"
 
       - name: Execute the documented RmR unit-test entrypoints
         id: rmr_tests
@@ -180,7 +189,7 @@ jobs:
           python3 rmr/scripts/audit_androidx_upstream.py \
             --upstream-ref "${UPSTREAM_REF}" \
             --skip-fetch \
-            --artifact-root "${RMR_BUILD_OUTPUT_ROOT}" \
+            --artifact-root "${AUDIT_DIR}/aars" \
             --out-dir "${AUDIT_DIR}" \
             --observation rmr_release_aar_build="${BUILD_OBSERVATION}" \
             --observation rmr_core_tests="${TEST_OBSERVATION}" \
@@ -196,7 +205,7 @@ jobs:
             --skip-fetch \
             --enforce-boundary \
             --fail-on-whitespace \
-            --artifact-root "${RMR_BUILD_OUTPUT_ROOT}" \
+            --artifact-root "${AUDIT_DIR}/aars" \
             --out-dir "${AUDIT_DIR}/policy"
 
       - name: Fail closed when functional proof or policy gate is incomplete
@@ -212,6 +221,5 @@ jobs:
           name: rmr-upstream-functional-audit-${{ github.sha }}
           path: |
             ${{ runner.temp }}/rmr-upstream-audit/
-            ${{ runner.workspace }}/out/androidx/rmr/**/build/outputs/aar/*.aar
           if-no-files-found: warn
           retention-days: 30
