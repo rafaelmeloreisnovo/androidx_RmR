@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ORG_GRADLE_PROJECT_rmrNativeAbis: ${{ inputs.native_abis || 'arm64-v8a' }}
+      RMR_FAST_MATH: "false"
+      RMR_VERIFY_CMAKE_CONFIGURATION: "true"
       RMR_GRADLE_JVM_ARGS: "-Xms1g -Xmx5g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
       RMR_GRADLE_WORKERS: "2"
       # Public CI has no AndroidX prebuilts checkout, so enable only the
@@ -97,7 +99,8 @@ jobs:
 
       - name: Assemble RmR artifacts within hosted-runner resource bounds
         run: |
-          bash rmr/scripts/build_rmr_release.sh
+          RMR_BUILD_RECEIPT_PATH="${RUNNER_TEMP}/rmr-native-build-receipt.json" \
+            bash rmr/scripts/build_rmr_release.sh
 
       - name: Verify and inventory release AARs
         shell: bash
@@ -125,3 +128,4 @@ jobs:
             ${{ runner.temp }}/rmr-aars/
             ${{ runner.temp }}/rmr-aar-inventory.txt
             ${{ runner.temp }}/rmr-ci-environment.json
+            ${{ runner.temp }}/rmr-native-build-receipt.json
