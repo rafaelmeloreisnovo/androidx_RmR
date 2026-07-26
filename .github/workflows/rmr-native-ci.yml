@@ -103,10 +103,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          output_root="${RUNNER_WORKSPACE}/out/androidx/rmr"
+          output_root="${GITHUB_WORKSPACE}/../../out/androidx/rmr"
+          inventory="${RUNNER_TEMP}/rmr-aar-inventory.txt"
+          staging_root="${RUNNER_TEMP}/rmr-aars"
           test -d "${output_root}"
-          find "${output_root}" -type f -path "*/build/outputs/aar/*.aar" -print | sort | tee "${RUNNER_TEMP}/rmr-aar-inventory.txt"
-          test -s "${RUNNER_TEMP}/rmr-aar-inventory.txt"
+          find "${output_root}" -type f -path "*/build/outputs/aar/*.aar" -print | sort | tee "${inventory}"
+          test -s "${inventory}"
+          while IFS= read -r artifact; do
+            relative_path="${artifact#${output_root}/}"
+            destination="${staging_root}/${relative_path}"
+            mkdir -p "$(dirname "${destination}")"
+            cp "${artifact}" "${destination}"
+          done < "${inventory}"
 
       - name: Upload AAR artifacts
         uses: actions/upload-artifact@v4
@@ -114,6 +122,6 @@ jobs:
           name: rmr-aars-${{ github.run_id }}
           if-no-files-found: error
           path: |
-            ${{ runner.workspace }}/out/androidx/rmr/**/build/outputs/aar/*.aar
+            ${{ runner.temp }}/rmr-aars/
             ${{ runner.temp }}/rmr-aar-inventory.txt
             ${{ runner.temp }}/rmr-ci-environment.json
