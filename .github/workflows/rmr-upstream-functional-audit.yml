@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
     inputs:
       upstream_ref:
-        description: "AndroidX upstream branch or tag to compare"
+        description: "AndroidX upstream branch to compare"
         required: false
         default: "androidx-main"
         type: string
