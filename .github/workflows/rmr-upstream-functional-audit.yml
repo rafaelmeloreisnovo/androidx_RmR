@@ -78,10 +78,15 @@ jobs:
             --out-dir "${AUDIT_DIR}"
 
       - name: Build every declared RmR release AAR
+        id: build_rmr
+        continue-on-error: true
         run: |
           bash rmr/scripts/build_rmr_release.sh
 
       - name: Execute the documented RmR unit-test entrypoints
+        id: rmr_tests
+        if: ${{ steps.build_rmr.outcome == 'success' }}
+        continue-on-error: true
         run: |
           ./gradlew --stacktrace --no-daemon \
             -Dorg.gradle.jvmargs="${RMR_GRADLE_JVM_ARGS}" \
@@ -91,6 +96,10 @@ jobs:
             :rmr:rafaelia:test
 
       - name: Record release and test observations in the audit
+        if: always()
+        env:
+          BUILD_OBSERVATION: ${{ steps.build_rmr.outcome == 'success' && 'PASSED' || 'FAILED' }}
+          TEST_OBSERVATION: ${{ steps.rmr_tests.outcome == 'success' && 'PASSED' || steps.rmr_tests.outcome == 'failure' && 'FAILED' || 'TOKEN_VAZIO' }}
         run: |
           python3 rmr/scripts/audit_androidx_upstream.py \
             --upstream-ref "${UPSTREAM_REF}" \
@@ -99,9 +108,15 @@ jobs:
             --fail-on-whitespace \
             --artifact-root rmr \
             --out-dir "${AUDIT_DIR}" \
-            --observation rmr_release_aar_build=PASSED \
-            --observation rmr_core_tests=PASSED \
-            --observation rafaelia_tests=PASSED
+            --observation rmr_release_aar_build="${BUILD_OBSERVATION}" \
+            --observation rmr_core_tests="${TEST_OBSERVATION}" \
+            --observation rafaelia_tests="${TEST_OBSERVATION}"
+
+      - name: Fail closed when functional proof is incomplete
+        if: ${{ steps.build_rmr.outcome != 'success' || steps.rmr_tests.outcome != 'success' }}
+        run: |
+          echo "RmR functional evidence is incomplete; inspect the uploaded audit artifact."
+          exit 1
 
       - name: Upload upstream delta, test evidence, and AAR inventory
         if: always()
