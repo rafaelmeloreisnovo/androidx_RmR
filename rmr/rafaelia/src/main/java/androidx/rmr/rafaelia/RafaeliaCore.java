@@ -12,9 +12,7 @@ package androidx.rmr.rafaelia;
 import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.NotThreadSafe;
 import androidx.annotation.RawRes;
-import androidx.annotation.ThreadSafe;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -68,7 +66,6 @@ import java.util.Map;
  * @version 1.0
  * @since 2026
  */
-@NotThreadSafe
 public final class RafaeliaCore {
     
     // Usage restriction enforcement
@@ -92,7 +89,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock VQF load vector (1..42).
      */
     @NonNull
-    @ThreadSafe
     public static int[] getVqfLoad() {
         return RafaeliaBootblock.getVqfLoad();
     }
@@ -101,7 +97,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock kernel identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getKernel() {
         return RafaeliaBootblock.KERNEL;
     }
@@ -110,7 +105,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock mode identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getMode() {
         return RafaeliaBootblock.MODE;
     }
@@ -119,7 +113,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock cognition identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getCognition() {
         return RafaeliaBootblock.COGNITION;
     }
@@ -128,7 +121,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock ethic identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getEthic() {
         return RafaeliaBootblock.ETHIC;
     }
@@ -137,7 +129,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock hash core identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getHashCore() {
         return RafaeliaBootblock.HASH_CORE;
     }
@@ -146,7 +137,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock vector core identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getVectorCore() {
         return RafaeliaBootblock.VECTOR_CORE;
     }
@@ -155,7 +145,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock universe identifier.
      */
     @NonNull
-    @ThreadSafe
     public static String getUniverse() {
         return RafaeliaBootblock.UNIVERSE;
     }
@@ -164,7 +153,6 @@ public final class RafaeliaCore {
      * Returns the RAFAELIA bootblock seals as a defensive copy.
      */
     @NonNull
-    @ThreadSafe
     public static String[] getSeals() {
         return RafaeliaBootblock.getSeals();
     }
@@ -202,7 +190,6 @@ public final class RafaeliaCore {
     /**
      * Explicitly injects a license record in memory.
      */
-    @ThreadSafe
     public static void injectLicense(@NonNull String content) {
         injectLicense(content, null);
     }
@@ -210,7 +197,6 @@ public final class RafaeliaCore {
     /**
      * Explicitly injects a license record in memory with optional full-content hash check.
      */
-    @ThreadSafe
     public static void injectLicense(@NonNull String content, @Nullable String expectedContentSha256) {
         String normalizedHash = normalizeHash(expectedContentSha256);
         LicenseRecord parsed = parseAndValidateLicense(content, normalizedHash, null);
@@ -225,7 +211,6 @@ public final class RafaeliaCore {
     /**
      * Loads a license from app-internal storage.
      */
-    @ThreadSafe
     public static void loadLicenseFromInternalStorage(
             @NonNull Context context,
             @NonNull String relativePath,
@@ -259,7 +244,6 @@ public final class RafaeliaCore {
     /**
      * Loads a signed license from a packaged raw resource.
      */
-    @ThreadSafe
     public static void loadLicenseFromRawResource(
             @NonNull Context context,
             @RawRes int rawResId,
@@ -565,7 +549,6 @@ public final class RafaeliaCore {
      * @throws SecurityException if usage is not authorized
      */
     @NonNull
-    @ThreadSafe
     public static RafaeliaCore create(int sizeBytes) {
         if (!sValidated) {
             validateUsage();
@@ -596,7 +579,6 @@ public final class RafaeliaCore {
      * @return direct memory buffer
      */
     @NonNull
-    @NotThreadSafe
     public ByteBuffer getDirectMemory() {
         return mDirectMemory;
     }
@@ -615,7 +597,6 @@ public final class RafaeliaCore {
      * @param dstOffset destination offset
      * @param length number of bytes to copy
      */
-    @ThreadSafe
     public static void optimizedMemoryCopy(
             @NonNull ByteBuffer src, int srcOffset,
             @NonNull ByteBuffer dst, int dstOffset,
@@ -680,7 +661,6 @@ public final class RafaeliaCore {
      * @param result result vector
      * @param length vector length (must be same for all)
      */
-    @ThreadSafe
     public static void vectorAdd(
             @NonNull float[] a,
             @NonNull float[] b,
@@ -713,7 +693,6 @@ public final class RafaeliaCore {
      * @param result result vector
      * @param length vector length (must be same for all)
      */
-    @ThreadSafe
     public static void vectorMultiply(
             @NonNull float[] a,
             @NonNull float[] b,
@@ -748,7 +727,6 @@ public final class RafaeliaCore {
      * @param inner inner dimension (cols of a, rows of b)
      * @param cols number of cols in b and result
      */
-    @ThreadSafe
     public static void matrixMultiply(
             @NonNull float[] a,
             @NonNull float[] b,
@@ -808,7 +786,6 @@ public final class RafaeliaCore {
      * 
      * @param address memory address to prefetch
      */
-    @ThreadSafe
     public static void prefetch(long address) {
         // Use native prefetch if available
         if (sNativeAvailable && address != 0) {
@@ -822,7 +799,6 @@ public final class RafaeliaCore {
      * <p>Use this gate to decide between native-accelerated paths and
      * pure-Java fallbacks.
      */
-    @ThreadSafe
     public static boolean isNativeAvailable() {
         return sNativeAvailable;
     }
@@ -846,7 +822,6 @@ public final class RafaeliaCore {
      *
      * @return bit mask of available features, or {@code 0} if native is unavailable
      */
-    @ThreadSafe
     public static int getCpuFeatures() {
         return sNativeAvailable ? nativeDetectCpuFeatures() : 0;
     }
