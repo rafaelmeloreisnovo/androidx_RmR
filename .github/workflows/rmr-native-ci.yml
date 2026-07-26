@@ -29,6 +29,8 @@ jobs:
       ALLOW_PUBLIC_REPOS: "true"
       # Avoid the Google-internal AndroidX remote build cache on public runners.
       USE_ANDROIDX_REMOTE_BUILD_CACHE: "false"
+      # Keep this CI scoped to RmR instead of the full AOSP multi-repo checkout.
+      PROJECT_PREFIX: ":rmr"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
