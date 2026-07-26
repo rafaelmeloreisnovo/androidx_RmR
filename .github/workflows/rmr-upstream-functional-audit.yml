@@ -49,6 +49,8 @@ jobs:
     env:
       UPSTREAM_REF: ${{ inputs.upstream_ref || 'androidx-main' }}
       RMR_NATIVE_ABIS: ${{ inputs.native_abis || 'arm64-v8a' }}
+      RMR_GRADLE_JVM_ARGS: "-Xms1g -Xmx5g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
+      RMR_GRADLE_WORKERS: "2"
       AUDIT_DIR: ${{ runner.temp }}/rmr-upstream-audit
     steps:
       - name: Checkout complete history for merge-base analysis
@@ -82,6 +84,8 @@ jobs:
       - name: Execute the documented RmR unit-test entrypoints
         run: |
           ./gradlew --stacktrace --no-daemon \
+            -Dorg.gradle.jvmargs="${RMR_GRADLE_JVM_ARGS}" \
+            -Dorg.gradle.workers.max="${RMR_GRADLE_WORKERS}" \
             -PrmrNativeAbis="${RMR_NATIVE_ABIS}" \
             :rmr:rmr-core:test \
             :rmr:rafaelia:test
