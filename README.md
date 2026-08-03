@@ -1,5 +1,9 @@
 # Android Jetpack
 
+**Estado:** `ACTIVE`  
+**Proprietário lógico:** `compiler-maintainer`  
+**Repositório:** [`rafaelmeloreisnovo/androidx_RmR`](https://github.com/rafaelmeloreisnovo/androidx_RmR)
+
 [![Revved up by Develocity](https://img.shields.io/badge/Revved%20up%20by-Develocity-06A0CE?logo=Gradle&labelColor=02303A)](https://ge.androidx.dev)
 
 Jetpack is a suite of libraries, tools, and guidance to help developers write high-quality apps easier. These components help you follow best practices, free you from writing boilerplate code, and simplify complex tasks, so you can focus on the code you care about.
