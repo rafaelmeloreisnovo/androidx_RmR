@@ -1,0 +1,29 @@
+name: RmR freestanding shape contract
+
+on:
+  pull_request:
+    paths:
+      - 'rmr/rmr-core/**'
+      - '.github/workflows/rmr-freestanding-contract.yml'
+  push:
+    branches: ['androidx-main']
+    paths:
+      - 'rmr/rmr-core/**'
+      - '.github/workflows/rmr-freestanding-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  host-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and execute fail-closed C11 shape gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc -std=c11 -ffreestanding -fno-builtin -O2 -Wall -Wextra -Werror -pedantic \
+            rmr/rmr-core/src/test/native/rmr_matrix_contract_test.c -o /tmp/rmr-matrix-contract-test
+          /tmp/rmr-matrix-contract-test
