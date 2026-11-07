@@ -66,6 +66,10 @@ public final class RmRMatrixOps {
             throw new IllegalArgumentException("Output matrix has incompatible dimensions.");
         }
         double[] outData = out.getDataUnsafe();
+        // Fail closed before zeroing: in-place output would destroy an input.
+        if (outData == left.getDataUnsafe() || outData == right.getDataUnsafe()) {
+            throw new IllegalArgumentException("Output must not alias an input matrix.");
+        }
         int outLength = outData.length;
         for (int i = 0; i < outLength; i++) {
             outData[i] = 0.0;
