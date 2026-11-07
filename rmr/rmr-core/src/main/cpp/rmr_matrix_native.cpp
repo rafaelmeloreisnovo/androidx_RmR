@@ -17,6 +17,7 @@
 #include <jni.h>
 #include <cstdint>
 #include <cstring>
+#include "rmr_matrix_contract.h"
 
 // Include platform-specific SIMD headers
 #ifdef __ARM_NEON
@@ -282,6 +283,25 @@ Java_androidx_rmr_core_RmRMatrixOps_multiplyNative(JNIEnv* env, jclass clazz,
                                                    jdoubleArray aData, jint aRows, jint aCols,
                                                    jdoubleArray bData, jint bRows, jint bCols,
                                                    jdoubleArray resultData) {
+    (void)clazz;
+    // Validate JNI-owned arrays before requesting native pointers.
+    // No pointer/byte length is inferred from unchecked Java parameters.
+    if (aData == nullptr || bData == nullptr || resultData == nullptr ||
+            env->IsSameObject(resultData, aData) ||
+            env->IsSameObject(resultData, bData) ||
+            !rmr_matrix_multiply_shape_valid(
+                    aRows, aCols, bRows, bCols,
+                    aData == nullptr ? -1 : env->GetArrayLength(aData),
+                    bData == nullptr ? -1 : env->GetArrayLength(bData),
+                    resultData == nullptr ? -1 : env->GetArrayLength(resultData))) {
+        jclass errorClass = env->FindClass("java/lang/IllegalArgumentException");
+        if (errorClass != nullptr) {
+            env->ThrowNew(errorClass,
+                    "Invalid matrix dimensions, array lengths, or aliased result");
+            env->DeleteLocalRef(errorClass);
+        }
+        return;
+    }
     // Get array pointers
     jdouble* a = env->GetDoubleArrayElements(aData, nullptr);
     jdouble* b = env->GetDoubleArrayElements(bData, nullptr);
