@@ -64,6 +64,8 @@ static inline rmr_arena_status rmr_arena_resolve(
     if (!a || !out || !a->base || a->generation == 0U)
         return RMR_ARENA_BAD_ARG;
     if (slice.generation != a->generation) return RMR_ARENA_STALE;
+    /* Reject corrupted bookkeeping before deriving borrowed pointers. */
+    if (a->used > a->capacity) return RMR_ARENA_OUT_OF_RANGE;
     if (slice.offset > a->used || slice.bytes == 0U ||
         slice.bytes > a->used - slice.offset || needed > slice.bytes)
         return RMR_ARENA_OUT_OF_RANGE;
