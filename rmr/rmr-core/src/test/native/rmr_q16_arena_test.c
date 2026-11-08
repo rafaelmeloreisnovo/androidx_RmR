@@ -34,6 +34,13 @@ static int run(void) {
     p = (void *)0;
     if (rmr_arena_resolve(&arena, first, 5U, &p) != RMR_ARENA_OUT_OF_RANGE || p)
         return __LINE__;
+    /* Simulate corrupt bookkeeping: resolution must never escape capacity. */
+    const size_t saved_used = arena.used;
+    arena.used = arena.capacity + 1U;
+    p = (void *)0;
+    if (rmr_arena_resolve(&arena, first, 4U, &p) != RMR_ARENA_OUT_OF_RANGE || p)
+        return __LINE__;
+    arena.used = saved_used;
     if (rmr_arena_alloc(&arena, 50U, 1U, &second) != RMR_ARENA_NO_SPACE)
         return __LINE__;
     if (rmr_arena_alloc(&arena, 1U, 3U, &second) != RMR_ARENA_BAD_ARG)
