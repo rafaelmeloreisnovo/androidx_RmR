@@ -17,7 +17,7 @@ START: READ → SOURCE → BUILD → TEST → EVIDENCE → ROLLBACK.
 ## Threats / capacity / anti-zombie
 
 - P0: nativeFreeAligned formerly accepted an arbitrary address; copy/set/vectors/matrices/prefetch formerly trusted raw jlong addresses and unknown lifetimes. Safe profile rejects stale/unknown, checks bytes and serializes close/use.
-- Default raw JNI mode still exists for compatibility: global P0 is NOT CLOSED. The old nativeGetDirectBufferAddress still exposes raw address privately but optimizedMemoryCopy no longer uses it.
+- Default raw JNI mode still exists for compatibility: global P0 is NOT CLOSED. The old nativeGetDirectBufferAddress exposes raw addresses only in the legacy OFF profile; in safe ON mode it returns 0 to prohibit exporting naked pointers. optimizedMemoryCopy does not use it in either mode.
 - jlong private numeric semantics change in opt-in safe mode from pointer to opaque generation token. Android Java signatures stay intact, BUT callers interpreting those longs as addresses are not compatible. Not cryptographically unforgeable.
 - ByteBuffer reachability is maintained during JNI synchronous call by argument references. Does not prevent hostile concurrent writes, external frees, JVM/Android bugs or unauthorized reflection.
 - Finite quotas reduce unbounded memory and compute time; do NOT demonstrate lack of OS zombie processes. No process lifecycle or live profiler was examined; access frequency and performance are TOKEN_VAZIO.
