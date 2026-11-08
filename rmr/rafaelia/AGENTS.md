@@ -1,6 +1,7 @@
 # AGENTS.md — Scoped Rafaelia memory protocol
 
 Applies only to rmr/rafaelia/**; start at ../001_PONTEIRO/START_HERE_ANDROIDX_LEASES_P0_V1.md.
+For binary linker placement/ICF experiment: ../001_PONTEIRO/START_HERE_BINARY_OVERLAY_V1.md. Flags only; never overlap mutable lease identity.
 
 - GitHub producer owns code and tests; Drive NEXUS/CURRENT_STATE own index/receipts; Supabase stores private event metadata.
 - No destructive edit to upstream AndroidX, third-party code, licensing, existing exported JNI symbols or Java public API without explicit review.
