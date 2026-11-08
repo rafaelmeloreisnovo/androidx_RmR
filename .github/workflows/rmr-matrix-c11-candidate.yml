@@ -1,0 +1,28 @@
+name: RmR Matrix C11 candidate (no promotion)
+on:
+  pull_request:
+    paths:
+      - 'rmr/rmr-core/src/main/cpp/**'
+      - 'rmr/rmr-core/src/test/native/**'
+      - '.github/workflows/rmr-matrix-c11-candidate.yml'
+      - 'rmr/001_PONTEIRO/START_HERE_ANDROIDX_CPP_C11_V1.md'
+permissions:
+  contents: read
+jobs:
+  pure-core-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: C11 freestanding shape/numeric/alias tests and ARM object closure
+        env:
+          CC: ${{ matrix.compiler }}
+        run: sh rmr/rmr-core/src/test/native/check_matrix_c11.sh
