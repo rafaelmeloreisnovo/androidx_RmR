@@ -77,11 +77,6 @@ if(RMR_BINARY_LAYOUT_EXPERIMENT)
     # CPU detection is control-plane code: prefer compact layout, not unrolling.
     set_property(SOURCE rafaelia_cpu_detect.cpp APPEND PROPERTY
         COMPILE_OPTIONS -Oz -fno-unroll-loops)
-    # Fixed-capacity C11 lease metadata is a cold, integer-only leaf.
-    if(RMR_SAFE_LEASES)
-        set_property(SOURCE portable/rmr_lease_v1.c APPEND PROPERTY
-            COMPILE_OPTIONS -Oz -fno-unroll-loops)
-    endif()
     target_link_options(rafaelia-native PRIVATE
         -fuse-ld=lld
         "LINKER:--gc-sections"
@@ -101,6 +96,14 @@ if(RMR_SAFE_LEASES)
     target_compile_definitions(rafaelia-native PRIVATE RMR_SAFE_LEASES=1)
     set_source_files_properties(portable/rmr_lease_v1.c PROPERTIES
         COMPILE_OPTIONS "-std=c11;-O2;-ffreestanding;-fno-builtin;-fno-stack-protector;-fvisibility=hidden;-Wall;-Wextra;-Wshadow;-Wstrict-prototypes;-Werror")
+endif()
+
+# Apply layout overrides AFTER the baseline source property assignment:
+# an earlier set_source_files_properties(PROPERTIES COMPILE_OPTIONS ...) would
+# replace APPEND flags instead of retaining them.
+if(RMR_SAFE_LEASES AND RMR_BINARY_LAYOUT_EXPERIMENT)
+    set_property(SOURCE portable/rmr_lease_v1.c APPEND PROPERTY
+        COMPILE_OPTIONS -Oz -fno-unroll-loops)
 endif()
 
 # Link with log library for Android logging
