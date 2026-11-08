@@ -627,4 +627,57 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativePrefetch(
     }
 }
 
+
+/*
+ * Bounded copy boundary: Java passes direct ByteBuffer objects, not addresses.
+ * The JNI references preserve reachability during the synchronous call.
+ * Offsets are bytes; JNI capacity is rechecked against underlying direct views.
+ */
+JNIEXPORT void JNICALL
+Java_androidx_rmr_rafaelia_RafaeliaCore_nativeCopyDirectBuffers(
+        JNIEnv* env, jclass clazz,
+        jobject source, jint sourceOffset,
+        jobject destination, jint destinationOffset, jint length) {
+    (void)clazz;
+    bool valid = source != nullptr && destination != nullptr &&
+            sourceOffset >= 0 && destinationOffset >= 0 && length >= 0;
+    if (valid) {
+        const jlong aCapacity = env->GetDirectBufferCapacity(source);
+        const jlong bCapacity = env->GetDirectBufferCapacity(destination);
+        valid = aCapacity >= 0 && bCapacity >= 0 &&
+                static_cast<jlong>(sourceOffset) <= aCapacity &&
+                static_cast<jlong>(destinationOffset) <= bCapacity &&
+                static_cast<jlong>(length) <= aCapacity - sourceOffset &&
+                static_cast<jlong>(length) <= bCapacity - destinationOffset;
+    }
+    if (valid && length > 0) {
+        jclass bufferClass = env->GetObjectClass(destination);
+        if (bufferClass == nullptr) return; // pending VM exception
+        jmethodID readOnly = env->GetMethodID(bufferClass, "isReadOnly", "()Z");
+        env->DeleteLocalRef(bufferClass);
+        if (readOnly == nullptr) return; // pending VM exception
+        valid = env->CallBooleanMethod(destination, readOnly) == JNI_FALSE;
+        if (env->ExceptionCheck()) return;
+    }
+    void* a = nullptr;
+    void* b = nullptr;
+    if (valid && length > 0) {
+        a = env->GetDirectBufferAddress(source);
+        b = env->GetDirectBufferAddress(destination);
+        valid = a != nullptr && b != nullptr;
+    }
+    if (!valid) {
+        jclass klass = env->FindClass("java/lang/IllegalArgumentException");
+        if (klass != nullptr) {
+            env->ThrowNew(klass, "Invalid direct buffer capacity, mutability or offset");
+            env->DeleteLocalRef(klass);
+        }
+        return;
+    }
+    if (length == 0) return;
+    memmove(static_cast<unsigned char*>(b) + destinationOffset,
+            static_cast<const unsigned char*>(a) + sourceOffset,
+            static_cast<size_t>(length));
+}
+
 } // extern "C"
