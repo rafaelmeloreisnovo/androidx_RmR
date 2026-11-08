@@ -1,0 +1,19 @@
+name: RmR 3x7 ternary exactness (host + ARM objects)
+on:
+  pull_request:
+    paths:
+      - 'rmr/rmr-core/src/main/cpp/portable/rmr_tri*'
+      - 'rmr/rmr-core/src/test/native/rmr_tri*'
+      - 'rmr/rmr-core/src/test/native/check_tri21_exact.sh'
+      - '.github/workflows/rmr-tri21-exact.yml'
+      - 'rmr/001_PONTEIRO/START_HERE_TRI21_EXACT_V1.md'
+permissions:
+  contents: read
+jobs:
+  scalar-versus-bitsliced:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail closed on ternary representation or arithmetic mismatch
+        run: sh rmr/rmr-core/src/test/native/check_tri21_exact.sh
