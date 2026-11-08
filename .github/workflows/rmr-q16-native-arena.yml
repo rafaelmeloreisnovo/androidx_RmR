@@ -1,0 +1,71 @@
+name: RmR Q16 native arena scoped gate
+on:
+  pull_request:
+    paths:
+      - 'rmr/rmr-core/src/main/cpp/rmr_q16_*.h'
+      - 'rmr/rmr-core/src/main/cpp/rmr_native_arena.h'
+      - 'rmr/rmr-core/src/test/native/rmr_q16_*'
+      - '.github/workflows/rmr-q16-native-arena.yml'
+  push:
+    branches: ['androidx-main']
+    paths:
+      - 'rmr/rmr-core/src/main/cpp/rmr_q16_*.h'
+      - 'rmr/rmr-core/src/main/cpp/rmr_native_arena.h'
+      - 'rmr/rmr-core/src/test/native/rmr_q16_*'
+      - '.github/workflows/rmr-q16-native-arena.yml'
+permissions:
+  contents: read
+jobs:
+  q16-arena-scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host C11 executable negative and invariant gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcc -std=c11 -ffreestanding -fno-builtin -fno-stack-protector \
+            -O2 -Wall -Wextra -Werror -pedantic \
+            rmr/rmr-core/src/test/native/rmr_q16_arena_test.c -o /tmp/rmr-q16-host
+          /tmp/rmr-q16-host
+      - name: ARMv7 A32 and Thumb2, AArch64 C11 object gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=rmr/rmr-core/src/test/native/rmr_q16_arena_test.c
+          for mode in arm thumb; do
+            clang --target=armv7a-linux-androideabi21 -march=armv7-a -m"$mode" \
+              -std=c11 -ffreestanding -fno-builtin -fno-stack-protector \
+              -O2 -Wall -Wextra -Werror -pedantic -c "$src" -o "/tmp/rmr-q16-$mode.o"
+            test -s "/tmp/rmr-q16-$mode.o"
+          done
+          clang --target=aarch64-linux-android21 -std=c11 \
+            -ffreestanding -fno-builtin -fno-stack-protector \
+            -O2 -Wall -Wextra -Werror -pedantic -c "$src" -o /tmp/rmr-q16-arm64.o
+          test -s /tmp/rmr-q16-arm64.o
+      - name: C++17 header compatibility per ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=rmr/rmr-core/src/test/native/rmr_q16_cpp_smoke.cpp
+          for mode in arm thumb; do
+            clang++ --target=armv7a-linux-androideabi21 -march=armv7-a -m"$mode" \
+              -std=c++17 -ffreestanding -fno-builtin -fno-exceptions -fno-rtti \
+              -fno-stack-protector -O2 -Wall -Wextra -Werror -pedantic \
+              -c "$src" -o "/tmp/rmr-q16-cxx-$mode.o"
+            test -s "/tmp/rmr-q16-cxx-$mode.o"
+          done
+          clang++ --target=aarch64-linux-android21 -std=c++17 \
+            -ffreestanding -fno-builtin -fno-exceptions -fno-rtti \
+            -fno-stack-protector -O2 -Wall -Wextra -Werror -pedantic \
+            -c "$src" -o /tmp/rmr-q16-cxx-arm64.o
+          test -s /tmp/rmr-q16-cxx-arm64.o
+      - name: No undefined global symbols in scoped freestanding objects
+        shell: bash
+        run: |
+          set -euo pipefail
+          for obj in /tmp/rmr-q16-arm.o /tmp/rmr-q16-thumb.o /tmp/rmr-q16-arm64.o \
+                     /tmp/rmr-q16-cxx-arm.o /tmp/rmr-q16-cxx-thumb.o /tmp/rmr-q16-cxx-arm64.o; do
+            readelf -Ws "$obj" | awk '$7 == "UND" && $5 == "GLOBAL" { print; found=1 } END { exit found ? 1 : 0 }'
+          done
