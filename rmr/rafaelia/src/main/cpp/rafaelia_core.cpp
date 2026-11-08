@@ -502,6 +502,14 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemoryCopy(
 JNIEXPORT jlong JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeGetDirectBufferAddress(
         JNIEnv* env, jclass clazz, jobject buffer) {
+#if defined(RMR_SAFE_LEASES)
+    (void)env;
+    (void)clazz;
+    (void)buffer;
+    /* Safe profile never exports a naked pointer through this private JNI.
+       Caller must use the bounded, live-object copy entrypoint instead. */
+    return 0;
+#else
     (void)clazz;
     if (buffer == nullptr) {
         return 0;
@@ -511,6 +519,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeGetDirectBufferAddress(
         return 0;
     }
     return reinterpret_cast<jlong>(address);
+
+#endif
 }
 
 /**
