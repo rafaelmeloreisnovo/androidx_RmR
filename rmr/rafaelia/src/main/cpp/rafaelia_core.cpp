@@ -14,6 +14,10 @@
 #include <cstdlib>
 #include <limits>
 #include <cstddef>
+#if defined(RMR_SAFE_LEASES)
+#include <pthread.h>
+#include "portable/rmr_lease_v1.h"
+#endif
 
 #if defined(__linux__)
     #include <sys/auxv.h>
@@ -49,6 +53,36 @@ extern "C" {
 namespace {
 
 constexpr int kMatrixBlockSize = 64;
+
+#if defined(RMR_SAFE_LEASES)
+/* Adapter-only lock + allocator; the freestanding lease primitive owns neither.
+ * Serializing operations with close prevents concurrent use-after-free. */
+static pthread_mutex_t gRmrLeaseLock = PTHREAD_MUTEX_INITIALIZER;
+static rmr_lease_registry gRmrLeases = {};
+static size_t gRmrLiveBytes = 0u;
+constexpr size_t kRmrMaxBlock = 32u * 1024u * 1024u;
+constexpr size_t kRmrMaxLive = 64u * 1024u * 1024u;
+constexpr unsigned long long kRmrMaxMatrixWork = 16777216ULL;
+
+static void RmrThrow(JNIEnv* env, const char* klassName, const char* message) {
+    if (env->ExceptionCheck()) return;
+    jclass klass = env->FindClass(klassName);
+    if (klass != nullptr) {
+        env->ThrowNew(klass, message);
+        env->DeleteLocalRef(klass);
+    }
+}
+
+static bool RmrView(rmr_lease_id id, size_t bytes, void** output) {
+    return rmr_lease_view(&gRmrLeases, id, 0u, bytes, output) == RMR_LEASE_OK;
+}
+
+static bool RmrFloatView(rmr_lease_id id, size_t bytes, void** output) {
+    if (!RmrView(id, bytes, output)) return false;
+    return reinterpret_cast<uintptr_t>(*output) % alignof(float) == 0u;
+}
+#endif
+
 
 #if defined(HAVE_SSE) || defined(HAVE_NEON)
 constexpr size_t kSseAlignment = 16;
@@ -317,6 +351,44 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeInitialize(JNIEnv* env, jclass cla
 JNIEXPORT jlong JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeAllocateAligned(
         JNIEnv* env, jclass clazz, jint size, jint alignment) {
+#if defined(RMR_SAFE_LEASES)
+
+    (void)clazz;
+    if (size <= 0 || alignment < static_cast<jint>(sizeof(void*)) ||
+            alignment > 4096 || (alignment & (alignment - 1)) != 0 ||
+            static_cast<size_t>(size) > kRmrMaxBlock) {
+        RmrThrow(env, "java/lang/IllegalArgumentException",
+                 "Invalid owned allocation size or alignment");
+        return 0;
+    }
+    pthread_mutex_lock(&gRmrLeaseLock);
+    if (static_cast<size_t>(size) > kRmrMaxLive - gRmrLiveBytes) {
+        pthread_mutex_unlock(&gRmrLeaseLock);
+        RmrThrow(env, "java/lang/OutOfMemoryError", "RMR memory quota reached");
+        return 0;
+    }
+    void* block = nullptr;
+    if (posix_memalign(&block, static_cast<size_t>(alignment),
+                       static_cast<size_t>(size)) != 0 || block == nullptr) {
+        pthread_mutex_unlock(&gRmrLeaseLock);
+        RmrThrow(env, "java/lang/OutOfMemoryError", "Aligned allocation failed");
+        return 0;
+    }
+    rmr_lease_id token = 0;
+    const int status = rmr_lease_open(
+            &gRmrLeases, block, static_cast<size_t>(size), &token);
+    if (status != RMR_LEASE_OK) {
+        free(block);
+        pthread_mutex_unlock(&gRmrLeaseLock);
+        RmrThrow(env, "java/lang/IllegalStateException",
+                 "Native lease registry exhausted");
+        return 0;
+    }
+    memset(block, 0, static_cast<size_t>(size));
+    gRmrLiveBytes += static_cast<size_t>(size);
+    pthread_mutex_unlock(&gRmrLeaseLock);
+    return static_cast<jlong>(token);
+#else
     (void)env;
     (void)clazz;
     
@@ -332,6 +404,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeAllocateAligned(
     memset(ptr, 0, size);
     
     return reinterpret_cast<jlong>(ptr);
+
+#endif
 }
 
 /**
@@ -340,6 +414,28 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeAllocateAligned(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeFreeAligned(
         JNIEnv* env, jclass clazz, jlong address) {
+#if defined(RMR_SAFE_LEASES)
+
+    (void)clazz;
+    if (address == 0) return;
+    void* base = nullptr;
+    rmr_lease_size capacity = 0;
+    pthread_mutex_lock(&gRmrLeaseLock);
+    const int status = rmr_lease_close(
+            &gRmrLeases, static_cast<rmr_lease_id>(address),
+            &base, &capacity);
+    if (status == RMR_LEASE_OK) {
+        /* Closing and freeing under the same lock blocks other lease readers. */
+        memset(base, 0, capacity);
+        free(base);
+        gRmrLiveBytes -= capacity;
+    }
+    pthread_mutex_unlock(&gRmrLeaseLock);
+    if (status != RMR_LEASE_OK) {
+        RmrThrow(env, "java/lang/IllegalArgumentException",
+                 "Stale, forged or double-freed native lease");
+    }
+#else
     (void)env;
     (void)clazz;
     
@@ -347,6 +443,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeFreeAligned(
     
     void* ptr = reinterpret_cast<void*>(address);
     free(ptr);
+
+#endif
 }
 
 /**
@@ -356,6 +454,27 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeFreeAligned(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemoryCopy(
         JNIEnv* env, jclass clazz, jlong src, jlong dst, jint size) {
+#if defined(RMR_SAFE_LEASES)
+
+    (void)clazz;
+    if (size == 0) return;
+    bool valid = size > 0;
+    void* source = nullptr;
+    void* target = nullptr;
+    if (valid) {
+        pthread_mutex_lock(&gRmrLeaseLock);
+        valid = RmrView(static_cast<rmr_lease_id>(src),
+                        static_cast<size_t>(size), &source) &&
+                RmrView(static_cast<rmr_lease_id>(dst),
+                        static_cast<size_t>(size), &target);
+        if (valid) memmove(target, source, static_cast<size_t>(size));
+        pthread_mutex_unlock(&gRmrLeaseLock);
+    }
+    if (!valid) {
+        RmrThrow(env, "java/lang/IllegalArgumentException",
+                 "Invalid native lease copy extent or lifetime");
+    }
+#else
     (void)env;
     (void)clazz;
     if (size <= 0 || src == 0 || dst == 0) {
@@ -373,6 +492,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemoryCopy(
     // Use standard memcpy - it's already highly optimized
     // on modern platforms with SIMD instructions
     memcpy(dstPtr, srcPtr, sizeBytes);
+
+#endif
 }
 
 /**
@@ -381,6 +502,14 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemoryCopy(
 JNIEXPORT jlong JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeGetDirectBufferAddress(
         JNIEnv* env, jclass clazz, jobject buffer) {
+#if defined(RMR_SAFE_LEASES)
+    (void)env;
+    (void)clazz;
+    (void)buffer;
+    /* Safe profile never exports a naked pointer through this private JNI.
+       Caller must use the bounded, live-object copy entrypoint instead. */
+    return 0;
+#else
     (void)clazz;
     if (buffer == nullptr) {
         return 0;
@@ -390,6 +519,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeGetDirectBufferAddress(
         return 0;
     }
     return reinterpret_cast<jlong>(address);
+
+#endif
 }
 
 /**
@@ -398,6 +529,25 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeGetDirectBufferAddress(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemorySet(
         JNIEnv* env, jclass clazz, jlong address, jbyte value, jint size) {
+#if defined(RMR_SAFE_LEASES)
+
+    (void)clazz;
+    if (size == 0) return;
+    bool valid = size > 0;
+    void* destination = nullptr;
+    if (valid) {
+        pthread_mutex_lock(&gRmrLeaseLock);
+        valid = RmrView(static_cast<rmr_lease_id>(address),
+                        static_cast<size_t>(size), &destination);
+        if (valid) memset(destination, static_cast<unsigned char>(value),
+                          static_cast<size_t>(size));
+        pthread_mutex_unlock(&gRmrLeaseLock);
+    }
+    if (!valid) {
+        RmrThrow(env, "java/lang/IllegalArgumentException",
+                 "Invalid native lease set extent or lifetime");
+    }
+#else
     (void)env;
     (void)clazz;
     if (size <= 0 || address == 0) {
@@ -405,6 +555,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemorySet(
     }
     void* ptr = reinterpret_cast<void*>(address);
     memset(ptr, value, size);
+
+#endif
 }
 
 /**
@@ -413,6 +565,30 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMemorySet(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeVectorAdd(
         JNIEnv* env, jclass clazz, jlong a, jlong b, jlong result, jint length) {
+#if defined(RMR_SAFE_LEASES)
+
+    (void)clazz;
+    if (length == 0) return;
+    bool valid = length > 0 &&
+            static_cast<size_t>(length) <= kRmrMaxBlock / sizeof(float);
+    void *av = nullptr, *bv = nullptr, *rv = nullptr;
+    if (valid) {
+        const size_t bytes = static_cast<size_t>(length) * sizeof(float);
+        pthread_mutex_lock(&gRmrLeaseLock);
+        valid = RmrFloatView(static_cast<rmr_lease_id>(a), bytes, &av) &&
+                RmrFloatView(static_cast<rmr_lease_id>(b), bytes, &bv) &&
+                RmrFloatView(static_cast<rmr_lease_id>(result), bytes, &rv);
+        if (valid) {
+            const float* ap = static_cast<const float*>(av);
+            const float* bp = static_cast<const float*>(bv);
+            float* rp = static_cast<float*>(rv);
+            for (int i = 0; i < length; ++i) rp[i] = ap[i] + bp[i];
+        }
+        pthread_mutex_unlock(&gRmrLeaseLock);
+    }
+    if (!valid) RmrThrow(env, "java/lang/IllegalArgumentException",
+                         "Invalid native vector lease add");
+#else
     (void)env;
     (void)clazz;
     if (length <= 0 || a == 0 || b == 0 || result == 0) {
@@ -454,6 +630,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeVectorAdd(
     for (; i < length; i++) {
         resultPtr[i] = aPtr[i] + bPtr[i];
     }
+
+#endif
 }
 
 /**
@@ -462,6 +640,30 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeVectorAdd(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativeVectorMultiply(
         JNIEnv* env, jclass clazz, jlong a, jlong b, jlong result, jint length) {
+#if defined(RMR_SAFE_LEASES)
+
+    (void)clazz;
+    if (length == 0) return;
+    bool valid = length > 0 &&
+            static_cast<size_t>(length) <= kRmrMaxBlock / sizeof(float);
+    void *av = nullptr, *bv = nullptr, *rv = nullptr;
+    if (valid) {
+        const size_t bytes = static_cast<size_t>(length) * sizeof(float);
+        pthread_mutex_lock(&gRmrLeaseLock);
+        valid = RmrFloatView(static_cast<rmr_lease_id>(a), bytes, &av) &&
+                RmrFloatView(static_cast<rmr_lease_id>(b), bytes, &bv) &&
+                RmrFloatView(static_cast<rmr_lease_id>(result), bytes, &rv);
+        if (valid) {
+            const float* ap = static_cast<const float*>(av);
+            const float* bp = static_cast<const float*>(bv);
+            float* rp = static_cast<float*>(rv);
+            for (int i = 0; i < length; ++i) rp[i] = ap[i] * bp[i];
+        }
+        pthread_mutex_unlock(&gRmrLeaseLock);
+    }
+    if (!valid) RmrThrow(env, "java/lang/IllegalArgumentException",
+                         "Invalid native vector lease multiply");
+#else
     (void)env;
     (void)clazz;
     if (length <= 0 || a == 0 || b == 0 || result == 0) {
@@ -503,6 +705,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeVectorMultiply(
     for (; i < length; i++) {
         resultPtr[i] = aPtr[i] * bPtr[i];
     }
+
+#endif
 }
 
 /**
@@ -514,6 +718,54 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMatrixMultiply(
         JNIEnv* env, jclass clazz, 
         jlong a, jlong b, jlong result, 
         jint rows, jint inner, jint cols) {
+#if defined(RMR_SAFE_LEASES)
+
+    (void)clazz;
+    if (rows <= 0 || inner <= 0 || cols <= 0 ||
+            result == a || result == b) {
+        RmrThrow(env, "java/lang/IllegalArgumentException",
+                 "Invalid matrix shape or aliased result lease");
+        return;
+    }
+    const unsigned long long m = static_cast<unsigned int>(rows);
+    const unsigned long long k = static_cast<unsigned int>(inner);
+    const unsigned long long n = static_cast<unsigned int>(cols);
+    /* Checked workload preflight bounds worst-case CPU occupation. */
+    if (m > kRmrMaxMatrixWork / k ||
+            n > kRmrMaxMatrixWork / (m * k)) {
+        RmrThrow(env, "java/lang/IllegalArgumentException",
+                 "Native matrix operation budget exceeded");
+        return;
+    }
+    const unsigned long long aCount = m * k;
+    const unsigned long long bCount = k * n;
+    const unsigned long long cCount = m * n;
+    if (aCount > kRmrMaxBlock / sizeof(float) ||
+            bCount > kRmrMaxBlock / sizeof(float) ||
+            cCount > kRmrMaxBlock / sizeof(float)) {
+        RmrThrow(env, "java/lang/IllegalArgumentException",
+                 "Native matrix capacity too large");
+        return;
+    }
+    void *av = nullptr, *bv = nullptr, *rv = nullptr;
+    pthread_mutex_lock(&gRmrLeaseLock);
+    const bool valid =
+            RmrFloatView(static_cast<rmr_lease_id>(a),
+                         static_cast<size_t>(aCount) * sizeof(float), &av) &&
+            RmrFloatView(static_cast<rmr_lease_id>(b),
+                         static_cast<size_t>(bCount) * sizeof(float), &bv) &&
+            RmrFloatView(static_cast<rmr_lease_id>(result),
+                         static_cast<size_t>(cCount) * sizeof(float), &rv);
+    if (valid) {
+        MatrixMultiplyScalarBlocked(static_cast<const float*>(av),
+                                    static_cast<const float*>(bv),
+                                    static_cast<float*>(rv),
+                                    rows, inner, cols);
+    }
+    pthread_mutex_unlock(&gRmrLeaseLock);
+    if (!valid) RmrThrow(env, "java/lang/IllegalArgumentException",
+                         "Invalid, stale or undersized matrix lease");
+#else
     (void)env;
     (void)clazz;
     if (rows <= 0 || inner <= 0 || cols <= 0 || a == 0 || b == 0 || result == 0) {
@@ -587,6 +839,8 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeMatrixMultiply(
         // Production code would use highly optimized BLAS library
         MatrixMultiplyScalarBlocked(aPtr, bPtr, resultPtr, rows, inner, cols);
     }
+
+#endif
 }
 
 /**
@@ -610,6 +864,18 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativeDetectCpuFeatures(
 JNIEXPORT void JNICALL
 Java_androidx_rmr_rafaelia_RafaeliaCore_nativePrefetch(
         JNIEnv* env, jclass clazz, jlong address, jint hint) {
+#if defined(RMR_SAFE_LEASES)
+
+    (void)env;
+    (void)clazz;
+    (void)hint;
+    void* target = nullptr;
+    pthread_mutex_lock(&gRmrLeaseLock);
+    const bool valid = RmrView(static_cast<rmr_lease_id>(address), 1u, &target);
+    if (valid) __builtin_prefetch(target, 0, 3);
+    pthread_mutex_unlock(&gRmrLeaseLock);
+    /* Unknown handles are ignored: prefetch is only an advisory hint. */
+#else
     (void)env;
     (void)clazz;
     if (address == 0) {
@@ -625,6 +891,61 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativePrefetch(
     } else {
         __builtin_prefetch(ptr, 0, 3);
     }
+
+#endif
+}
+
+
+/*
+ * Bounded copy boundary: Java passes direct ByteBuffer objects, not addresses.
+ * The JNI references preserve reachability during the synchronous call.
+ * Offsets are bytes; JNI capacity is rechecked against underlying direct views.
+ */
+JNIEXPORT void JNICALL
+Java_androidx_rmr_rafaelia_RafaeliaCore_nativeCopyDirectBuffers(
+        JNIEnv* env, jclass clazz,
+        jobject source, jint sourceOffset,
+        jobject destination, jint destinationOffset, jint length) {
+    (void)clazz;
+    bool valid = source != nullptr && destination != nullptr &&
+            sourceOffset >= 0 && destinationOffset >= 0 && length >= 0;
+    if (valid) {
+        const jlong aCapacity = env->GetDirectBufferCapacity(source);
+        const jlong bCapacity = env->GetDirectBufferCapacity(destination);
+        valid = aCapacity >= 0 && bCapacity >= 0 &&
+                static_cast<jlong>(sourceOffset) <= aCapacity &&
+                static_cast<jlong>(destinationOffset) <= bCapacity &&
+                static_cast<jlong>(length) <= aCapacity - sourceOffset &&
+                static_cast<jlong>(length) <= bCapacity - destinationOffset;
+    }
+    if (valid && length > 0) {
+        jclass bufferClass = env->GetObjectClass(destination);
+        if (bufferClass == nullptr) return; // pending VM exception
+        jmethodID readOnly = env->GetMethodID(bufferClass, "isReadOnly", "()Z");
+        env->DeleteLocalRef(bufferClass);
+        if (readOnly == nullptr) return; // pending VM exception
+        valid = env->CallBooleanMethod(destination, readOnly) == JNI_FALSE;
+        if (env->ExceptionCheck()) return;
+    }
+    void* a = nullptr;
+    void* b = nullptr;
+    if (valid && length > 0) {
+        a = env->GetDirectBufferAddress(source);
+        b = env->GetDirectBufferAddress(destination);
+        valid = a != nullptr && b != nullptr;
+    }
+    if (!valid) {
+        jclass klass = env->FindClass("java/lang/IllegalArgumentException");
+        if (klass != nullptr) {
+            env->ThrowNew(klass, "Invalid direct buffer capacity, mutability or offset");
+            env->DeleteLocalRef(klass);
+        }
+        return;
+    }
+    if (length == 0) return;
+    memmove(static_cast<unsigned char*>(b) + destinationOffset,
+            static_cast<const unsigned char*>(a) + sourceOffset,
+            static_cast<size_t>(length));
 }
 
 } // extern "C"
