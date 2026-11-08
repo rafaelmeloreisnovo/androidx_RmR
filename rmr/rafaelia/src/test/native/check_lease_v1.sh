@@ -20,9 +20,24 @@ fi
 # This compares section GC, safe ICF and compact per-leaf flags independently.
 # Metrics are host ELF only, not Android binaries or speed measurements.
 if ! command -v ld.lld >/dev/null 2>&1; then
-  echo 'RMR_LAYOUT_BINARY=BLOCKED_LLD_UNAVAILABLE'
+  # Prefer the pinned NDK lld shipped with this Android project over
+  # downloading a fresh linker or weakening --icf=safe.
+  for NDK_ROOT in "${ANDROID_NDK_HOME:-}" "${ANDROID_NDK_ROOT:-}" \
+      "${ANDROID_HOME:-/usr/local/lib/android/sdk}/ndk/28.2.13676358" \
+      "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/ndk/28.2.13676358"; do
+    if [ -n "$NDK_ROOT" ] && \
+        [ -x "$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" ]; then
+      PATH="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+      export PATH
+      break
+    fi
+  done
+fi
+if ! command -v ld.lld >/dev/null 2>&1; then
+  echo 'RMR_LAYOUT_BINARY=BLOCKED_LLD_UNAVAILABLE_PINNED_NDK'
   exit 1
 fi
+printf 'RMR_LAYOUT_LINKER=%s\n' "$(command -v ld.lld)"
 for MODE in plain sections icf compact; do
   EXTRA=''
   LINK=''
