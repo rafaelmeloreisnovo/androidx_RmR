@@ -1,6 +1,6 @@
 /* Copyright (C) 2026 Rafael Melo Reis (RmR) */
 /* Hosted adversarial fixture for capacity, lifetime, ABA and concurrent release. */
-#include "../rafaelia_capabilities.h"
+#include "../../src/main/cpp/rafaelia_capabilities.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <pthread.h>
