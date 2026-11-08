@@ -14,26 +14,43 @@
 
 cmake_minimum_required(VERSION 3.18.1)
 
-project("rmr-core")
+project("rmr-core" LANGUAGES C CXX)
 
-# Enable C++17 standard
+# Opt-in migration: preserve the existing SIMD C++ implementation by default.
+option(RMR_MATRIX_C11_BACKEND "Use candidate freestanding C11 matrix leaf with C JNI adapter" OFF)
+
+# Keep legacy C++17 ABI available while the C11 candidate undergoes parity gates.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(RMR_MATRIX_C11_BACKEND)
+    set(RMR_MATRIX_NATIVE_SOURCES
+        rmr_matrix_jni_c.c
+        portable/rmr_matrix_f64.c)
+else()
+    set(RMR_MATRIX_NATIVE_SOURCES rmr_matrix_native.cpp)
+endif()
 
 # Create the native library
 add_library(
     rmr-core-native
     SHARED
-    rmr_matrix_native.cpp
+    ${RMR_MATRIX_NATIVE_SOURCES}
 )
 
-# Common compiler flags for optimization (fast-math is controlled by Gradle)
-target_compile_options(rmr-core-native PRIVATE
-    -O3
-    -fno-exceptions
-    -fno-rtti
-    -funroll-loops
-)
+# Flags remain scoped: do not feed C++ flags to the C11 leaf or JNI adapter.
+if(RMR_MATRIX_C11_BACKEND)
+    target_compile_features(rmr-core-native PRIVATE c_std_11)
+    target_compile_options(rmr-core-native PRIVATE -O3 -funroll-loops -fno-fast-math -ffp-contract=off)
+    set_source_files_properties(portable/rmr_matrix_f64.c PROPERTIES
+        COMPILE_OPTIONS "-ffreestanding;-fno-builtin;-fno-stack-protector;-fvisibility=hidden;-Wall;-Wextra;-Werror;-Wshadow;-Wstrict-prototypes")
+else()
+    target_compile_options(rmr-core-native PRIVATE
+        -O3
+        -fno-exceptions
+        -fno-rtti
+        -funroll-loops)
+endif()
 
 # Architecture-specific optimizations
 if(${ANDROID_ABI} STREQUAL "arm64-v8a")
