@@ -74,6 +74,7 @@ public final class RafaeliaCore {
     private static final Object LICENSE_LOCK = new Object();
     private static volatile boolean sValidated = false;
     private static volatile boolean sNativeAvailable = false;
+    private static volatile boolean sBoundedNativeCopyAvailable = true;
     @Nullable
     private static volatile LicenseRecord sLicenseRecord = null;
     @Nullable
@@ -639,9 +640,16 @@ public final class RafaeliaCore {
         
         // Keep both direct buffers live across JNI and check native capacities.
         // memmove semantics cover overlapping views on the same allocation.
-        if (sNativeAvailable && src.isDirect() && dst.isDirect()) {
-            nativeCopyDirectBuffers(src, srcOffset, dst, dstOffset, length);
-            return;
+        if (sNativeAvailable && sBoundedNativeCopyAvailable
+                && src.isDirect() && dst.isDirect()) {
+            try {
+                nativeCopyDirectBuffers(src, srcOffset, dst, dstOffset, length);
+                return;
+            } catch (UnsatisfiedLinkError olderNativeLibrary) {
+                // Version-skew protection: retain Java correctness and avoid
+                // repeatedly loading a JNI symbol missing from an old .so.
+                sBoundedNativeCopyAvailable = false;
+            }
         }
 
         // Non-direct / JVM-only fallback: snapshot before writing, including
