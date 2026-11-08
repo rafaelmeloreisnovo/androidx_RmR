@@ -856,6 +856,7 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativePrefetch(
         JNIEnv* env, jclass clazz, jlong address, jint hint) {
 #if defined(RMR_SAFE_LEASES)
 
+    (void)env;
     (void)clazz;
     (void)hint;
     void* target = nullptr;
