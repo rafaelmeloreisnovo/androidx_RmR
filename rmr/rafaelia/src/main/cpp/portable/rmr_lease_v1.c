@@ -24,6 +24,11 @@ int rmr_lease_open(rmr_lease_registry *registry, void *base,
     if (registry == (rmr_lease_registry *)0 || base == (void *)0 ||
         out_id == (rmr_lease_id *)0 || capacity == 0) return RMR_LEASE_INVALID;
     *out_id = 0;
+    /* Never register the same owned base twice: prevents double free. */
+    for (unsigned int i = 0; i < RMR_LEASE_SLOTS; ++i) {
+        if (registry->slots[i].live != 0 &&
+            registry->slots[i].base == base) return RMR_LEASE_INVALID;
+    }
     for (unsigned int i = 0; i < RMR_LEASE_SLOTS; ++i) {
         rmr_lease_slot *slot = &registry->slots[i];
         /* No generation wrap: retire exhausted slots instead of ABA reuse. */
