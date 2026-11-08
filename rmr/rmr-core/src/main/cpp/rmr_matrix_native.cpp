@@ -16,8 +16,8 @@
 
 #include <jni.h>
 #include <cstdint>
-#include <cstring>
 #include "rmr_matrix_contract.h"
+#include "rmr_zero_f64.h"
 
 // Include platform-specific SIMD headers
 #ifdef __ARM_NEON
@@ -72,7 +72,7 @@ static void multiplyNEON(const double* __restrict__ aData, int aRows, int aCols,
     int n = bCols;
     
     // Clear result
-    memset(resultData, 0, m * n * sizeof(double));
+    rmr_zero_f64(resultData, (unsigned int)m * (unsigned int)n);
     
     // Blocked multiplication with NEON
     for (int ii = 0; ii < m; ii += BLOCK_SIZE) {
@@ -130,7 +130,7 @@ static void multiplySSE2(const double* __restrict__ aData, int aRows, int aCols,
     int n = bCols;
     
     // Clear result
-    memset(resultData, 0, m * n * sizeof(double));
+    rmr_zero_f64(resultData, (unsigned int)m * (unsigned int)n);
     
     // Blocked multiplication with SSE2
     for (int ii = 0; ii < m; ii += BLOCK_SIZE) {
@@ -188,7 +188,7 @@ static void multiplyAVX(const double* __restrict__ aData, int aRows, int aCols,
     int n = bCols;
     
     // Clear result
-    memset(resultData, 0, m * n * sizeof(double));
+    rmr_zero_f64(resultData, (unsigned int)m * (unsigned int)n);
     
     // Blocked multiplication with AVX
     for (int ii = 0; ii < m; ii += BLOCK_SIZE) {
@@ -245,7 +245,7 @@ static void multiplyScalar(const double* __restrict__ aData, int aRows, int aCol
     int n = bCols;
     
     // Clear result
-    memset(resultData, 0, m * n * sizeof(double));
+    rmr_zero_f64(resultData, (unsigned int)m * (unsigned int)n);
     
     // Blocked multiplication
     for (int ii = 0; ii < m; ii += BLOCK_SIZE) {
