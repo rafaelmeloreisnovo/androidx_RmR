@@ -5,9 +5,11 @@
 package androidx.rmr.rafaelia;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 import java.nio.ByteBuffer;
+import java.lang.reflect.Field;
 import org.junit.Test;
 
 public class RafaeliaMemoryCopyTest {
@@ -50,6 +52,33 @@ public class RafaeliaMemoryCopyTest {
             fail("Read-only destination must reject");
         } catch (IllegalArgumentException expected) {
             // No mutation.
+        }
+    }
+
+    @Test
+    public void missingNewSymbolFromOldNativeLibraryFallsBackOnce() throws Exception {
+        Field loaded = RafaeliaCore.class.getDeclaredField("sNativeAvailable");
+        Field bounded = RafaeliaCore.class.getDeclaredField("sBoundedNativeCopyAvailable");
+        loaded.setAccessible(true);
+        bounded.setAccessible(true);
+        boolean oldLoaded = loaded.getBoolean(null);
+        boolean oldBounded = bounded.getBoolean(null);
+        try {
+            loaded.setBoolean(null, true);
+            bounded.setBoolean(null, true);
+            ByteBuffer src = ByteBuffer.allocateDirect(4);
+            ByteBuffer dst = ByteBuffer.allocateDirect(4);
+            src.put(1, (byte) 42);
+            // JVM-only test: no librafaelia-native is present. The missing JNI
+            // symbol must be cached, not retried for every subsequent copy.
+            RafaeliaCore.optimizedMemoryCopy(src, 1, dst, 2, 1);
+            assertEquals((byte) 42, dst.get(2));
+            assertFalse(bounded.getBoolean(null));
+            RafaeliaCore.optimizedMemoryCopy(src, 1, dst, 0, 1);
+            assertEquals((byte) 42, dst.get(0));
+        } finally {
+            loaded.setBoolean(null, oldLoaded);
+            bounded.setBoolean(null, oldBounded);
         }
     }
 
