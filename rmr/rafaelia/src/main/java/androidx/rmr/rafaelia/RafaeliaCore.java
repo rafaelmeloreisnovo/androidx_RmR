@@ -177,6 +177,117 @@ public final class RafaeliaCore {
     private static native int nativeDetectCpuFeatures();
     private static native void nativePrefetch(long address, int hint);
     private static native long nativeGetDirectBufferAddress(@NonNull ByteBuffer buffer);
+
+    // Safe successor methods: opaque tokens and borrowed direct buffers, never addresses.
+    private static native long nativeCapabilityAllocate(int bytes, int alignment);
+    private static native boolean nativeCapabilityRelease(long token);
+    private static native boolean nativeCapabilityFill(long token, int offset, int count, byte value);
+    private static native boolean nativeCapabilityCopy(
+            long source, int sourceOffset, long target, int targetOffset, int count);
+    private static native int nativeCapabilityRead(long token, int offset);
+    private static native boolean nativeCapabilityWrite(long token, int offset, byte value);
+    private static native boolean nativeCopyDirectBuffers(
+            @NonNull ByteBuffer source, int sourceOffset,
+            @NonNull ByteBuffer target, int targetOffset, int count);
+
+    /** Allocate caller-owned native memory. Close explicitly; no finalizer or GC side effect. */
+    @NonNull
+    public static OwnedRegion allocateOwnedRegion(int bytes, int alignment) {
+        if (!sValidated) {
+            validateUsage();
+        }
+        if (!sNativeAvailable) {
+            throw new IllegalStateException("Native RAFAELIA library is unavailable");
+        }
+        if (bytes <= 0 || bytes > 16 * 1024 * 1024 || alignment < 8
+                || alignment > 4096 || (alignment & (alignment - 1)) != 0) {
+            throw new IllegalArgumentException("Invalid native capacity or alignment");
+        }
+        long token = nativeCapabilityAllocate(bytes, alignment);
+        if (token == 0L) {
+            throw new OutOfMemoryError("Native capability slots or memory exhausted");
+        }
+        return new OwnedRegion(token, bytes);
+    }
+
+    /**
+     * Explicitly owned native region. Methods never return its raw address.
+     * Closing is idempotent. Native operations serialize with release; if the
+     * region closes concurrently, a stale operation fails instead of dereferencing.
+     */
+    public static final class OwnedRegion implements AutoCloseable {
+        private volatile long token;
+        private final int capacity;
+
+        private OwnedRegion(long token, int capacity) {
+            this.token = token;
+            this.capacity = capacity;
+        }
+
+        public int capacity() {
+            return capacity;
+        }
+
+        private static void bounds(int offset, int count, int total) {
+            if (offset < 0 || count < 0 || offset > total || count > total - offset) {
+                throw new IndexOutOfBoundsException("Outside native capability bounds");
+            }
+        }
+
+        private long openToken() {
+            long snapshot = token;
+            if (snapshot == 0L) {
+                throw new IllegalStateException("Native region is closed");
+            }
+            return snapshot;
+        }
+
+        public void fill(int offset, int count, byte value) {
+            bounds(offset, count, capacity);
+            if (!nativeCapabilityFill(openToken(), offset, count, value)) {
+                throw new IllegalStateException("Native region expired during fill");
+            }
+        }
+
+        public void copyTo(@NonNull OwnedRegion target, int sourceOffset,
+                           int targetOffset, int count) {
+            if (target == null) {
+                throw new NullPointerException("target");
+            }
+            bounds(sourceOffset, count, capacity);
+            bounds(targetOffset, count, target.capacity);
+            if (!nativeCapabilityCopy(openToken(), sourceOffset,
+                    target.openToken(), targetOffset, count)) {
+                throw new IllegalStateException("Native region expired during copy");
+            }
+        }
+
+        public byte readByte(int offset) {
+            bounds(offset, 1, capacity);
+            int value = nativeCapabilityRead(openToken(), offset);
+            if (value < 0) {
+                throw new IllegalStateException("Native region expired during read");
+            }
+            return (byte) value;
+        }
+
+        public void writeByte(int offset, byte value) {
+            bounds(offset, 1, capacity);
+            if (!nativeCapabilityWrite(openToken(), offset, value)) {
+                throw new IllegalStateException("Native region expired during write");
+            }
+        }
+
+        @Override
+        public synchronized void close() {
+            long current = token;
+            token = 0L;
+            if (current != 0L && !nativeCapabilityRelease(current)) {
+                throw new IllegalStateException("Native region release was rejected");
+            }
+        }
+    }
+
     
     static {
         // Load native library for bare-metal operations
@@ -638,18 +749,11 @@ public final class RafaeliaCore {
             return;
         }
         
-        // Keep both direct buffers live across JNI and check native capacities.
-        // memmove semantics cover overlapping views on the same allocation.
-        if (sNativeAvailable && sBoundedNativeCopyAvailable
-                && src.isDirect() && dst.isDirect()) {
-            try {
-                nativeCopyDirectBuffers(src, srcOffset, dst, dstOffset, length);
-                return;
-            } catch (UnsatisfiedLinkError olderNativeLibrary) {
-                // Version-skew protection: retain Java correctness and avoid
-                // repeatedly loading a JNI symbol missing from an old .so.
-                sBoundedNativeCopyAvailable = false;
-            }
+        // Borrow the live ByteBuffer objects inside JNI: no raw address escapes.
+        // JNI rechecks native capacity, and uses memmove for overlapping views.
+        if (sNativeAvailable && src.isDirect() && dst.isDirect()
+                && nativeCopyDirectBuffers(src, srcOffset, dst, dstOffset, length)) {
+            return;
         }
 
         // Non-direct / JVM-only fallback: snapshot before writing, including

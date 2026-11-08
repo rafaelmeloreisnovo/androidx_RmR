@@ -1,0 +1,41 @@
+name: RAFAELIA JNI capability safety
+on:
+  pull_request:
+    paths:
+      - 'rmr/rafaelia/src/main/cpp/rafaelia_capabilities.*'
+      - 'rmr/rafaelia/src/main/cpp/rafaelia_core.cpp'
+      - 'rmr/rafaelia/src/main/cpp/CMakeLists.txt'
+      - 'rmr/rafaelia/src/main/java/androidx/rmr/rafaelia/RafaeliaCore.java'
+      - 'rmr/rafaelia/tests/capabilities/**'
+      - '.github/workflows/rafaelia-jni-capability.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  caps-host-adversarial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5 Node24
+        with:
+          persist-credentials: false
+      - name: GCC C11 capacity and lifetime
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd rmr/rafaelia
+          gcc -std=c11 -O2 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer -pthread \
+            src/main/cpp/rafaelia_capabilities.c tests/capabilities/capabilities_host_test.c -o /tmp/rmr-cap-gcc
+          ASAN_OPTIONS=detect_leaks=1 /tmp/rmr-cap-gcc
+      - name: Clang C11 capacity and lifetime
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd rmr/rafaelia
+          clang -std=c11 -O2 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer -pthread \
+            src/main/cpp/rafaelia_capabilities.c tests/capabilities/capabilities_host_test.c -o /tmp/rmr-cap-clang
+          ASAN_OPTIONS=detect_leaks=1 /tmp/rmr-cap-clang
+      - name: Android boundary honesty
+        run: |
+          echo "PASS_SCOPED: hosted C tests only; Android ABI/JNI/device not verified by this workflow"
