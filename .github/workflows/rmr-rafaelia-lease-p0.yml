@@ -1,0 +1,29 @@
+name: RmR Rafaelia native lease P0 (host scoped)
+on:
+  pull_request:
+    paths:
+      - 'rmr/rafaelia/src/main/cpp/**'
+      - 'rmr/rafaelia/src/main/java/**'
+      - 'rmr/rafaelia/src/test/**'
+      - '.github/workflows/rmr-rafaelia-lease-p0.yml'
+      - 'rmr/001_PONTEIRO/START_HERE_ANDROIDX_LEASES_P0_V1.md'
+permissions:
+  contents: read
+jobs:
+  lease-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Memory lease P0, cross object, sanitizer and both JNI profiles
+        env:
+          CC: ${{ matrix.cc }}
+        run: sh rmr/rafaelia/src/test/native/check_lease_v1.sh
