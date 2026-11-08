@@ -42,6 +42,7 @@ set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -flt
 # Source files
 set(SOURCES
     rafaelia_core.cpp
+    rafaelia_capabilities.c
     rafaelia_memory.cpp
     rafaelia_vector.cpp
     rafaelia_matrix.cpp

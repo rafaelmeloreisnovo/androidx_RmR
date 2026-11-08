@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <limits>
 #include <cstddef>
+#include "rafaelia_capabilities.h"
 
 #if defined(__linux__)
     #include <sys/auxv.h>
@@ -625,6 +626,68 @@ Java_androidx_rmr_rafaelia_RafaeliaCore_nativePrefetch(
     } else {
         __builtin_prefetch(ptr, 0, 3);
     }
+}
+
+
+/* The new ownership API uses opaque generation tokens, NEVER raw jlong addresses. */
+JNIEXPORT jlong JNICALL Java_androidx_rmr_rafaelia_RafaeliaCore_nativeCapabilityAllocate(
+        JNIEnv *, jclass, jint bytes, jint alignment) {
+    if (bytes <= 0 || alignment <= 0) return 0;
+    return static_cast<jlong>(rmr_cap_allocate(static_cast<size_t>(bytes),
+                                                static_cast<size_t>(alignment)));
+}
+JNIEXPORT jboolean JNICALL Java_androidx_rmr_rafaelia_RafaeliaCore_nativeCapabilityRelease(
+        JNIEnv *, jclass, jlong token) {
+    return rmr_cap_release(static_cast<uint64_t>(token)) ? JNI_TRUE : JNI_FALSE;
+}
+JNIEXPORT jboolean JNICALL Java_androidx_rmr_rafaelia_RafaeliaCore_nativeCapabilityFill(
+        JNIEnv *, jclass, jlong token, jint offset, jint count, jbyte value) {
+    if (offset < 0 || count < 0) return JNI_FALSE;
+    return rmr_cap_fill(static_cast<uint64_t>(token), static_cast<size_t>(offset),
+                        static_cast<size_t>(count), static_cast<uint8_t>(value)) ? JNI_TRUE : JNI_FALSE;
+}
+JNIEXPORT jboolean JNICALL Java_androidx_rmr_rafaelia_RafaeliaCore_nativeCapabilityCopy(
+        JNIEnv *, jclass, jlong src, jint src_offset, jlong dst, jint dst_offset, jint count) {
+    if (src_offset < 0 || dst_offset < 0 || count < 0) return JNI_FALSE;
+    return rmr_cap_copy(static_cast<uint64_t>(src), static_cast<size_t>(src_offset),
+                        static_cast<uint64_t>(dst), static_cast<size_t>(dst_offset),
+                        static_cast<size_t>(count)) ? JNI_TRUE : JNI_FALSE;
+}
+JNIEXPORT jint JNICALL Java_androidx_rmr_rafaelia_RafaeliaCore_nativeCapabilityRead(
+        JNIEnv *, jclass, jlong token, jint offset) {
+    uint8_t value = 0;
+    if (offset < 0 || !rmr_cap_read(static_cast<uint64_t>(token),
+                                    static_cast<size_t>(offset), &value)) return -1;
+    return static_cast<jint>(value);
+}
+JNIEXPORT jboolean JNICALL Java_androidx_rmr_rafaelia_RafaeliaCore_nativeCapabilityWrite(
+        JNIEnv *, jclass, jlong token, jint offset, jbyte value) {
+    if (offset < 0) return JNI_FALSE;
+    return rmr_cap_write(static_cast<uint64_t>(token), static_cast<size_t>(offset),
+                         static_cast<uint8_t>(value)) ? JNI_TRUE : JNI_FALSE;
+}
+/* Hot-path migration: borrow jobject during JNI, check its actual capacity,
+ * avoid pointer escape and preserve buffer position; memmove handles overlap. */
+JNIEXPORT jboolean JNICALL Java_androidx_rmr_rafaelia_RafaeliaCore_nativeCopyDirectBuffers(
+        JNIEnv* env, jclass, jobject src, jint src_offset,
+        jobject dst, jint dst_offset, jint count) {
+    if (!src || !dst || src_offset < 0 || dst_offset < 0 || count < 0) return JNI_FALSE;
+    const jlong src_capacity = env->GetDirectBufferCapacity(src);
+    const jlong dst_capacity = env->GetDirectBufferCapacity(dst);
+    if (src_capacity < 0 || dst_capacity < 0 ||
+        static_cast<jlong>(src_offset) > src_capacity ||
+        static_cast<jlong>(dst_offset) > dst_capacity ||
+        static_cast<jlong>(count) > src_capacity - src_offset ||
+        static_cast<jlong>(count) > dst_capacity - dst_offset)
+        return JNI_FALSE;
+    if (count == 0) return JNI_TRUE;
+    const void* src_ptr = env->GetDirectBufferAddress(src);
+    void* dst_ptr = env->GetDirectBufferAddress(dst);
+    if (!src_ptr || !dst_ptr) return JNI_FALSE;
+    memmove(static_cast<uint8_t*>(dst_ptr) + dst_offset,
+            static_cast<const uint8_t*>(src_ptr) + src_offset,
+            static_cast<size_t>(count));
+    return JNI_TRUE;
 }
 
 } // extern "C"
