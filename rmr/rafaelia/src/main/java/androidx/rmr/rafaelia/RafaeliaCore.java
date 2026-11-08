@@ -74,6 +74,7 @@ public final class RafaeliaCore {
     private static final Object LICENSE_LOCK = new Object();
     private static volatile boolean sValidated = false;
     private static volatile boolean sNativeAvailable = false;
+    private static volatile boolean sBoundedNativeCopyAvailable = true;
     @Nullable
     private static volatile LicenseRecord sLicenseRecord = null;
     @Nullable
@@ -164,6 +165,10 @@ public final class RafaeliaCore {
     private static native long nativeAllocateAligned(int size, int alignment);
     private static native void nativeFreeAligned(long address);
     private static native void nativeMemoryCopy(long src, long dst, int size);
+    // Pass live JVM buffer references and explicit capacities, never raw addresses.
+    private static native void nativeCopyDirectBuffers(
+            @NonNull ByteBuffer src, int srcOffset,
+            @NonNull ByteBuffer dst, int dstOffset, int length);
     private static native void nativeMemorySet(long address, byte value, int size);
     private static native void nativeVectorAdd(long a, long b, long result, int length);
     private static native void nativeVectorMultiply(long a, long b, long result, int length);
@@ -750,10 +755,15 @@ public final class RafaeliaCore {
                 && nativeCopyDirectBuffers(src, srcOffset, dst, dstOffset, length)) {
             return;
         }
-        
-        // Fallback to Java implementation
+
+        // Non-direct / JVM-only fallback: snapshot before writing, including
+        // aliased heap slices and read-only source views. No partial mutation on OOME.
+        byte[] snapshot = new byte[length];
         for (int i = 0; i < length; i++) {
-            dst.put(dstOffset + i, src.get(srcOffset + i));
+            snapshot[i] = src.get(srcOffset + i);
+        }
+        for (int i = 0; i < length; i++) {
+            dst.put(dstOffset + i, snapshot[i]);
         }
     }
     

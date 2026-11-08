@@ -5,7 +5,11 @@
 
 cmake_minimum_required(VERSION 3.18.1)
 
-project(rafaelia-native)
+project(rafaelia-native LANGUAGES C CXX)
+
+# P0 staged mode: the existing JNI signatures and default raw-pointer
+# backend remain unchanged until Android/ABI/parity review.
+option(RMR_SAFE_LEASES "Enable generation+capacity checks for legacy jlong JNI APIs" OFF)
 
 # Keep the floating-point model explicit and consistent with the Gradle property.
 option(RMR_FAST_MATH "Enable aggressive floating-point optimizations" OFF)
@@ -48,9 +52,18 @@ set(SOURCES
     rafaelia_matrix.cpp
     rafaelia_cpu_detect.cpp
 )
+if(RMR_SAFE_LEASES)
+    list(APPEND SOURCES portable/rmr_lease_v1.c)
+endif()
 
 # Create shared library
 add_library(rafaelia-native SHARED ${SOURCES})
+
+if(RMR_SAFE_LEASES)
+    target_compile_definitions(rafaelia-native PRIVATE RMR_SAFE_LEASES=1)
+    set_source_files_properties(portable/rmr_lease_v1.c PROPERTIES
+        COMPILE_OPTIONS "-std=c11;-O2;-ffreestanding;-fno-builtin;-fno-stack-protector;-fvisibility=hidden;-Wall;-Wextra;-Wshadow;-Wstrict-prototypes;-Werror")
+endif()
 
 # Link with log library for Android logging
 find_library(log-lib log)
