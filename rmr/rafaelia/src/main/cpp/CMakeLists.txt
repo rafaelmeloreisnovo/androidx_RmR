@@ -11,6 +11,13 @@ project(rafaelia-native LANGUAGES C CXX)
 # backend remain unchanged until Android/ABI/parity review.
 option(RMR_SAFE_LEASES "Enable generation+capacity checks for legacy jlong JNI APIs" OFF)
 
+# Experimental binary composition profile. OFF preserves the producer baseline.
+# Sections let lld retain or fold only legally equivalent code; NOT buffer state.
+option(RMR_BINARY_LAYOUT_EXPERIMENT
+    "Enable per-function sections, GC and safe identical-code folding (NDK lld only)" OFF)
+option(RMR_BINARY_LAYOUT_TRACE
+    "Print linker GC/ICF decisions when binary-layout experiment is enabled" OFF)
+
 # Keep the floating-point model explicit and consistent with the Gradle property.
 option(RMR_FAST_MATH "Enable aggressive floating-point optimizations" OFF)
 
@@ -58,10 +65,45 @@ endif()
 # Create shared library
 add_library(rafaelia-native SHARED ${SOURCES})
 
+# No new runtime functions; layout is derived from existing functions/sections.
+# A separate linker map per ABI makes alignment, padding and retained bytes auditable.
+if(RMR_BINARY_LAYOUT_EXPERIMENT)
+    if(NOT ANDROID OR NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(FATAL_ERROR
+            "RMR_BINARY_LAYOUT_EXPERIMENT requires Android NDK Clang/lld")
+    endif()
+    target_compile_options(rafaelia-native PRIVATE
+        -ffunction-sections -fdata-sections -fno-common)
+    # CPU detection is control-plane code: prefer compact layout, not unrolling.
+    set_property(SOURCE rafaelia_cpu_detect.cpp APPEND PROPERTY
+        COMPILE_OPTIONS -Oz -fno-unroll-loops)
+    target_link_options(rafaelia-native PRIVATE
+        -fuse-ld=lld
+        "LINKER:--gc-sections"
+        "LINKER:--icf=safe"
+        "LINKER:-Map,${CMAKE_CURRENT_BINARY_DIR}/rmr-layout-${ANDROID_ABI}.map")
+    if(RMR_BINARY_LAYOUT_TRACE)
+        target_link_options(rafaelia-native PRIVATE
+            "LINKER:--print-icf-sections"
+            "LINKER:--print-gc-sections")
+    endif()
+    message(STATUS "RMR opt-in layout: function/data sections + safe ICF + map")
+elseif(RMR_BINARY_LAYOUT_TRACE)
+    message(FATAL_ERROR "RMR_BINARY_LAYOUT_TRACE requires RMR_BINARY_LAYOUT_EXPERIMENT=ON")
+endif()
+
 if(RMR_SAFE_LEASES)
     target_compile_definitions(rafaelia-native PRIVATE RMR_SAFE_LEASES=1)
     set_source_files_properties(portable/rmr_lease_v1.c PROPERTIES
         COMPILE_OPTIONS "-std=c11;-O2;-ffreestanding;-fno-builtin;-fno-stack-protector;-fvisibility=hidden;-Wall;-Wextra;-Wshadow;-Wstrict-prototypes;-Werror")
+endif()
+
+# Apply layout overrides AFTER the baseline source property assignment:
+# an earlier set_source_files_properties(PROPERTIES COMPILE_OPTIONS ...) would
+# replace APPEND flags instead of retaining them.
+if(RMR_SAFE_LEASES AND RMR_BINARY_LAYOUT_EXPERIMENT)
+    set_property(SOURCE portable/rmr_lease_v1.c APPEND PROPERTY
+        COMPILE_OPTIONS -Oz -fno-unroll-loops)
 endif()
 
 # Link with log library for Android logging

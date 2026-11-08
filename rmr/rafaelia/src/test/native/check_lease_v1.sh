@@ -16,6 +16,57 @@ if [ -n "$(nm -u "$WORK/lease.o")" ]; then
 fi
 "$CC" $FLAGS "$SRC" "$TEST" -o "$WORK/test"
 "$WORK/test"
+# Four controlled link profiles on the SAME host/compiler/lld and SAME source.
+# This compares section GC, safe ICF and compact per-leaf flags independently.
+# Metrics are host ELF only, not Android binaries or speed measurements.
+if ! command -v ld.lld >/dev/null 2>&1; then
+  # Prefer the pinned NDK lld shipped with this Android project over
+  # downloading a fresh linker or weakening --icf=safe.
+  for NDK_ROOT in "${ANDROID_NDK_HOME:-}" "${ANDROID_NDK_ROOT:-}" \
+      "${ANDROID_HOME:-/usr/local/lib/android/sdk}/ndk/28.2.13676358" \
+      "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/ndk/28.2.13676358"; do
+    if [ -n "$NDK_ROOT" ] && \
+        [ -x "$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" ]; then
+      PATH="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+      export PATH
+      break
+    fi
+  done
+fi
+if ! command -v ld.lld >/dev/null 2>&1; then
+  echo 'RMR_LAYOUT_BINARY=BLOCKED_LLD_UNAVAILABLE_PINNED_NDK'
+  exit 1
+fi
+printf 'RMR_LAYOUT_LINKER=%s\n' "$(command -v ld.lld)"
+for MODE in plain sections icf compact; do
+  EXTRA=''
+  LINK=''
+  case "$MODE" in
+    plain) ;;
+    sections)
+      EXTRA='-ffunction-sections -fdata-sections -fno-common'
+      LINK='-Wl,--gc-sections' ;;
+    icf)
+      EXTRA='-ffunction-sections -fdata-sections -fno-common'
+      LINK='-Wl,--gc-sections -Wl,--icf=safe' ;;
+    compact)
+      EXTRA='-ffunction-sections -fdata-sections -fno-common -Os -fno-unroll-loops'
+      LINK='-Wl,--gc-sections -Wl,--icf=safe' ;;
+  esac
+  "$CC" $FLAGS $EXTRA -fuse-ld=lld "$SRC" "$TEST" $LINK \
+    "-Wl,-Map,$WORK/layout-$MODE.map" -o "$WORK/layout-$MODE"
+  "$WORK/layout-$MODE"
+  for SYMBOL in rmr_lease_init rmr_lease_open rmr_lease_view rmr_lease_close; do
+    if ! nm -g --defined-only "$WORK/layout-$MODE" | grep -q " $SYMBOL$"; then
+      echo "RMR_LAYOUT_MISSING_LIVE_SYMBOL=$MODE:$SYMBOL"
+      exit 1
+    fi
+  done
+  printf 'RMR_LAYOUT_MODE=%s; HOST_BYTES=%s; ' "$MODE" \
+    "$(wc -c < "$WORK/layout-$MODE")"
+  size -B "$WORK/layout-$MODE" | tail -n 1
+  readelf -SW "$WORK/layout-$MODE" | grep -E '[[:space:]]\.text[[:space:]]' | head -n 1
+done
 if command -v clang >/dev/null 2>&1; then
   clang --target=armv7a-none-eabi -march=armv7-a -marm $FLAGS -c "$SRC" -o "$WORK/armv7-a32.o"
   clang --target=armv7a-none-eabi -march=armv7-a -mthumb $FLAGS -c "$SRC" -o "$WORK/armv7-thumb2.o"
