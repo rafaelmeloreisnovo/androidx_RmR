@@ -48,11 +48,17 @@ int rmr_tri21_compare_scalar(rmr_u64 left, rmr_u64 right, unsigned out_counts[9]
     if (rmr_tri21_validate(left) != RMR_TRI_STATUS_OK ||
         rmr_tri21_validate(right) != RMR_TRI_STATUS_OK)
         return RMR_TRI_STATUS_ENCODING;
-    unsigned counts[9] = {0};
-    for (unsigned index = 0; index < RMR_TRI21_COUNT; ++index) {
-        const unsigned a = (unsigned)((left >> (2u * index)) & 3u);
-        const unsigned b = (unsigned)((right >> (2u * index)) & 3u);
-        counts[a * 3u + b] += 1u;
+    /* Independent per-bucket enumeration avoids implicit zero-fill/memclr.
+     * This is a correctness oracle, not a performance-oriented hot path. */
+    unsigned counts[9];
+    for (unsigned bucket = 0; bucket < 9u; ++bucket) {
+        unsigned count = 0;
+        for (unsigned index = 0; index < RMR_TRI21_COUNT; ++index) {
+            const unsigned a = (unsigned)((left >> (2u * index)) & 3u);
+            const unsigned b = (unsigned)((right >> (2u * index)) & 3u);
+            if (a * 3u + b == bucket) count += 1u;
+        }
+        counts[bucket] = count;
     }
     for (unsigned i = 0; i < 9u; ++i) out_counts[i] = counts[i];
     return RMR_TRI_STATUS_OK;
