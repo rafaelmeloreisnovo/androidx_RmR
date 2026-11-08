@@ -21,7 +21,7 @@ for TARGET in armv7a-none-eabi aarch64-none-elf; do
   for F in rmr_tri21_scalar rmr_tri21_bitsliced rmr_tri40; do
     clang --target="$TARGET" $FLAGS -c "$SRC/$F.c" -o "$WORK/$TARGET-$F.o"
     if [ -n "$(nm -u "$WORK/$TARGET-$F.o")" ]; then
-      echo "ERROR_IMPORT:$TARGET:$F"; exit 1
+      echo "ERROR_IMPORT:$TARGET:$F"; nm -u "$WORK/$TARGET-$F.o"; exit 1
     fi
   done
   echo "TARGET_$TARGET=COMPILE_AND_SYMBOL_PASS"
@@ -31,7 +31,7 @@ for F in rmr_tri21_scalar rmr_tri21_bitsliced rmr_tri40; do
   clang --target=armv7a-none-eabi -mthumb -march=armv7-a \
     $FLAGS -c "$SRC/$F.c" -o "$WORK/thumb-$F.o"
   if [ -n "$(nm -u "$WORK/thumb-$F.o")" ]; then
-    echo "ERROR_IMPORT:thumb:$F"; exit 1
+    echo "ERROR_IMPORT:thumb:$F"; nm -u "$WORK/thumb-$F.o"; exit 1
   fi
 done
 echo 'THUMB2=COMPILE_AND_SYMBOL_PASS'
